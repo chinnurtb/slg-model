@@ -1,0 +1,12 @@
+{application, slg_model,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { slg_model_app, []}},
+  {env, []}
+ ]}.
