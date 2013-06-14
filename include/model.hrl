@@ -8,11 +8,3 @@
           database="slg_model" ::list(),
           worker=33 ::integer()
          }).
-
-%% 建筑物品
--record(db_building, {
-          id = 0 :: integer(),
-          user_id = 0 :: integer(),
-          type = <<"test">> :: binary(),
-          level = 0 :: integer()
-         }).

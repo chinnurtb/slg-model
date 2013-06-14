@@ -3,7 +3,7 @@
 -export([select/2, update/2, insert/2, delete/2,
          select/1, update/1, insert/1, delete/1]).
 
--include("model.hrl").
+-include("data.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 select(Poll, Cond) when is_list(Cond) ->
@@ -36,15 +36,3 @@ insert(DbBuilding) ->
 
 delete(ID) ->
   model:delete_t(ID, buildings).
-
-all_test() ->
-  Poll = model:start(#db_conf{username="root", password="", database="slg_model"}),
-  R1 = select(Poll, [{level, 1}]),
-  2 = length(R1),
-  insert(Poll, #db_building{id=331, level = 1}),
-  R2 = select(Poll, [{level, 1}]),
-  3 = length(R2),
-  delete(Poll, 331),
-  R3 = select(Poll, [{level, 1}]),
-  2 = length(R3),
-  ok.

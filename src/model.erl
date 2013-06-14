@@ -1,7 +1,7 @@
 -module(model).
 -compile(export_all).
 
--include("model.hrl").
+-include("data.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include("deps/mysql/include/mysql.hrl").
 
@@ -34,6 +34,12 @@ atom_prefix(Key, Prefix) ->
 
 %% 产生原子.
 atom(Suffix, Key) -> atom_suffix(Key, Suffix).
+
+%% record
+record_atom(Key) ->
+  S = "db_" ++ atom_to_list(Key),
+  S1 = string:strip(S, both, $s),
+  list_to_atom(S1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 更高层次的执行
 select_t(Record, Table, Column, Cond) ->
@@ -157,7 +163,7 @@ count_test() ->
 module_new(Key) ->
   Atom = Key,
   ModuleAtom = atom_prefix(Atom, model),
-  DbAtom = atom_prefix(Atom, db),
+  DbAtom = record_atom(Key),
   M1 = data_smerl:new(ModuleAtom),
   Table = Key,
   %% 普通查询函数.
@@ -183,19 +189,19 @@ module_new(Key) ->
   {ok, M5} = data_smerl:add_func(M4, DeleteFun),
   %% 事务查询函数
   SelectFunt1 = io_lib:format("select(Cond) when is_list(Cond) ->
-     model:select(~p, ~p, all, Cond);
+     model:select_t(~p, ~p, all, Cond);
      select(UserId) when is_integer(UserId) ->
-     model:select(~p, ~p, all, [{user_id, UserId}]).",
+     model:select_t(~p, ~p, all, [{user_id, UserId}]).",
                               [DbAtom, Table, DbAtom, Table]),
   SelectFunt = lists:flatten(SelectFunt1),
   UpdateFunt1 = io_lib:format("update(Db) ->
-     model:update(model_record:m(~p), ~p, Db).", [Key, Table]),
+     model:update_t(model_record:m(~p), ~p, Db).", [Key, Table]),
   UpdateFunt = lists:flatten(UpdateFunt1),
   InsertFunt1 = io_lib:format("insert(Db) ->
-     model:insert(model_record:m(~p), ~p, Db).", [Key, Table]),
+     model:insert_t(model_record:m(~p), ~p, Db).", [Key, Table]),
   InsertFunt = lists:flatten(InsertFunt1),
   DeleteFunt1 = io_lib:format("delete(ID) ->
-     model:delete(ID, ~p).", [Table]),
+     model:delete_t(ID, ~p).", [Table]),
   DeleteFunt = lists:flatten(DeleteFunt1),
   {ok, M6} = data_smerl:add_func(M5, SelectFunt),
   {ok, M7} = data_smerl:add_func(M6, UpdateFunt),
@@ -213,7 +219,7 @@ module_new(Key) ->
 %% 在生成之前先使用一张ets表获取用户输入，之后一次性生成.
 
 init_m() ->
-  data_ets:new(slg_model_map).
+  data:new(slg_model_map).
 
 %% Key为复数.
 add_m(Key, KeyList, Db) ->
@@ -243,3 +249,6 @@ gen_h() ->
                 end,
                 All),
   ok.
+
+trans(Poll, Fun) ->
+  mysql:transaction(Poll, Fun).

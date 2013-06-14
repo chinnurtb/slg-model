@@ -2,10 +2,10 @@
 %% 当数据在ets表中发生变化时，会记录其状态.
 %% ets表中会维护:更新id列表, 删除id列表, 新建id列表
 %% 并将id列表中的数据按相应的规则写回数据库.
--module(data_ets).
+-module(data).
 -compile(export_all).
 
--include("model.hrl").
+-include("data.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% 安全新建ets表
@@ -34,6 +34,8 @@ ets_i(EtsTable, Id) ->
 
 load_s(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
+  io:format("load s ~p ~p~n", [Model, UsrId]),
+  io:format("load s ~p ~n", [Model:select(model:atom(read, EtsTable), UsrId)]),
   case Model:select(model:atom(read, EtsTable), UsrId) of
     [] -> {error, not_exist};
     [R]-> K = element(2, R),
@@ -238,80 +240,17 @@ write_del(Table) ->
   [write_del_i(Table, Model, Id) || {Id, _} <- L],
   ok.
 
-%% 测试
-load_test() ->
-  new(building),
-  model:start(#db_conf{poll=building_read,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 4
-                      }),
-  model:start(#db_conf{poll=building_write,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 1
-                      }),
-  {ok, _} = load_s(building, 1),
-  {error, _} = load_s(building, 100),
-  {ok, R1} = load_a(building, 2),
-  true = is_list(R1),
-  2 = length(R1),
-  R1.
 
+id(Key) -> data_holder:id(Key).
 
-s_test() ->
-  new(building),
-  model:start(#db_conf{poll=building_read,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 4
-                      }),
-  model:start(#db_conf{poll=building_write,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 1
-                      }),
-  {error, _} = load_s(building, 21),
-  add_s(building, 21, #db_building{id=310, level = 3, user_id = 21,
-                                   type= <<"test">> }),
-  write_add(building),
-  {ok, R} = load_s(building, 21),
-  update_s(building, 21, R#db_building{level = 21}),
-  write_update(building),
-  delete_s(building, 21, R#db_building.id),
-  write_del(building),
-  ok.
+find_s(Table, UsrId) ->
+  case lookup_s(Table, UsrId) of
+    {ok, R} -> {ok, R};
+    {error, _ } -> load_s(Table, UsrId)
+  end.
 
-a_test() ->
-  new(building),
-  model:start(#db_conf{poll=building_read,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 4
-                      }),
-  model:start(#db_conf{poll=building_write,
-                       username="root",
-                       password="",
-                       database="slg_model",
-                       worker = 1
-                      }),
-  {ok, []} = load_a(building, 24),
-  add_i(building, 24, #db_building{id=313, level = 3, user_id = 24,
-                                   type= <<"test1">> }),
-  add_i(building, 24, #db_building{id=314, level = 3, user_id = 24,
-                                   type= <<"test2">> }),
-  write_add(building),
-  {ok, R} = load_a(building, 24),
-  2 = length(R),
-  [R1, R2] = R,
-  update_i(building, 24, R1#db_building{level = 24}),
-  write_update(building),
-  delete_i(building, 24, R1#db_building.id),
-  delete_i(building, 24, R2#db_building.id),
-  write_del(building),
-  ok.
+find_a(Table, UsrId) ->
+  case lookup_a(Table, UsrId) of
+    {ok, R} -> {ok, R};
+    {error, _ } -> load_a(Table, UsrId)
+  end.
