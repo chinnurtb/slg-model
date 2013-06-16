@@ -23,21 +23,29 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+  Writer = {
+    data_writer_super,
+    {supervisor, start_link, [{local, data_writer_super}, data_writer_super, []]},
+    permanent,
+    infinity,
+    supervisor,
+    []
+   },
   Data = {
-    data_super,
-    {supervisor, start_link, [{local, data_super}, data_super, []]},
+    data_holder_super,
+    {supervisor, start_link, [{local, data_holder_super}, data_holder_super, []]},
     permanent,
     infinity,
     supervisor,
     []
    },
   Guard = {
-    guard_super,
-    {supervisor, start_link, [{local, guard_super}, guard_super, []]},
+    data_guard_super,
+    {supervisor, start_link, [{local, data_guard_super}, data_guard_super, []]},
     permanent,
     infinity,
     supervisor,
     []
    },
-  {ok, { {one_for_one, 5, 10}, [Data, Guard]} }.
+  {ok, { {one_for_one, 5, 10}, [Data, Guard, Writer]} }.
 

@@ -42,8 +42,6 @@ load_s(EtsTable, UsrId) ->
           {ok, R}
   end.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 如果数据不在ets中，加载数组数据到ets，如果在则不加载.
-
 load_a(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
   List = Model:select(model:atom(read, EtsTable), UsrId),
@@ -91,68 +89,17 @@ lookup_i(Table, Id) ->
     [R]-> {ok, R}
   end.
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 更新ets表
-
-%% 基础函数
-attr_stage_add(Table, DictName, Id) ->
-  Dict = case ets:lookup(Table, {stage, DictName}) of
-           [] -> dict:new();
-           [{state, {stage, DictName}, Dict1}] -> Dict1
-         end,
-  Dict2 = dict:store(Id, true, Dict),
-  ets:insert(Table, {state, {stage, DictName}, Dict2}).
-
-%% 获取更新id列表
-attr_stage_all(Table, DictName) ->
-  case ets:lookup(Table, {stage, DictName}) of
-    [] -> [];
-    [{state, {stage, DictName}, Dict}] -> dict:to_list(Dict)
-  end.
-
-attr_stage_del(Table, DictName, Id) ->
-  Dict = case ets:lookup(Table, {stage, DictName}) of
-           [] -> dict:new();
-           [{state, {stage, DictName}, Dict1}] -> Dict1
-         end,
-  Dict2 = dict:erase(Id, Dict),
-  ets:insert(Table, {state, {stage, DictName}, Dict2}).
-
-attr_stage_test() ->
-  new(revenues),
-  attr_stage_add(revenues, up, 23),
-  [{23, true}] = attr_stage_all(revenues, up),
-  ok.
-
-
-%% 在更新列表
-update_stage_add(Table, Id) -> attr_stage_add(Table, up, Id).
-update_stage_all(Table) -> attr_stage_all(Table, up).
-update_stage_del(Table, Id) -> attr_stage_del(Table, up, Id).
-
-%% 删除列表
-delete_stage_add(Table, Id) -> attr_stage_add(Table, del, Id).
-delete_stage_all(Table) -> attr_stage_all(Table, del).
-delete_stage_del(Table, Id) -> attr_stage_del(Table, del, Id).
-
-%% 新建列表
-add_stage_add(Table, Id) -> attr_stage_add(Table, add, Id).
-add_stage_all(Table) -> attr_stage_all(Table, add).
-add_stage_del(Table, Id) -> attr_stage_del(Table, add, Id).
-
 %% 更新操作
 update_s(Table, UsrId, Data) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
     [{single, {key, UsrId}, Id}] ->
-      update_stage_add(Table, Id),
+      Id = element(2, Data),
       ets:insert(Table, Data), ok
   end.
 
 %% 分条更新
-update_i(Table, _UsrId, Data) when is_tuple(Data) ->
-  Id = element(2, Data),
-  update_stage_add(Table, Id),
+update_i(Table, Data) ->
   ets:insert(Table, Data),
   ok.
 
@@ -160,7 +107,6 @@ delete_s(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
     [{single, {key, UsrId}, Id}] ->
-      delete_stage_add(Table, Id),
       ets:delete(Table, Id),
       ets:delete(Table, {key, UsrId}),
       ok
@@ -173,7 +119,6 @@ delete_i(Table, UsrId, Id) ->
     [{array, {key, UsrId}, Ids}] ->
       ets:delete(Table, Id),
       ets:insert(Table, {array, {key, UsrId}, lists:delete(Id, Ids)}),
-      delete_stage_add(Table, Id),
       ok
   end.
 
@@ -186,7 +131,6 @@ add_i(Table, UsrId, Data) ->
         end,
   ets:insert(Table, {array, {key, UsrId}, [Id|Ids]}),
   ets:insert(Table, Data),
-  add_stage_add(Table, Id),
   ok.
 
 %% 添加单条
@@ -198,59 +142,8 @@ add_s(Table, UsrId, Data) ->
     [] ->
       ets:insert(Table, {single, {key, UsrId}, Id}),
       ets:insert(Table, Data),
-      add_stage_add(Table, Id),
       ok
   end.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 定时回写数据到数据
-
-%% 新增数据写回数据库，
-write_add_i(Table, Model, Id) ->
-  case ets_i(Table, Id) of
-    {error, _} -> ok;
-    {ok, R} ->
-      Poll = model:atom(write, Table),
-      Model:insert(Poll, R),
-      add_stage_del(Table, Id)
-  end.
-
-write_add(Table) ->
-  L = add_stage_all(Table),
-  Model = model:model(Table),
-  [write_add_i(Table, Model, Id) || {Id, _} <- L],
-  ok.
-
-%% 更新数据写回数据库
-write_update_i(Table, Model, Id) ->
-  case ets_i(Table, Id) of
-    {error, _} -> ok;
-    {ok, R} ->
-      Poll = model:atom(write, Table),
-      Model:update(Poll, R),
-      update_stage_del(Table, Id)
-  end.
-
-write_update(Table) ->
-  L = update_stage_all(Table),
-  Model = model:model(Table),
-  [write_update_i(Table, Model, Id) || {Id, _} <- L],
-  ok.
-
-%% 删除数据写回数据库
-write_del_i(Table, Model, Id) ->
-  Poll = model:atom(write, Table),
-  Model:delete(Poll, Id),
-  delete_stage_del(Table, Id),
-  ok.
-
-write_del(Table) ->
-  L = delete_stage_all(Table),
-  Model = model:model(Table),
-  [write_del_i(Table, Model, Id) || {Id, _} <- L],
-  ok.
-
-
-id(Key) -> data_holder:id(Key).
 
 find_s(Table, UsrId) ->
   case lookup_s(Table, UsrId) of
@@ -264,5 +157,5 @@ find_a(Table, UsrId) ->
     {error, _ } -> load_a(Table, UsrId)
   end.
 
-find_i(Table, UsrId, Id) ->
-  lookup_i(Table, UsrId, Id).
+find_i(Table, Id) ->
+  lookup_i(Table, Id).
