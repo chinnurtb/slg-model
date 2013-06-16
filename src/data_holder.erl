@@ -23,13 +23,13 @@ max_id(Poll, Table) ->
   model:max_id(Poll, Table).
 
 init([DataBase, Key]) ->
-  %%{_, _, Atom} = data:map(Key),
-  data:new(Key),
+  data_ets:new(Key),
   model:module_new(Key),
   model:start(#db_conf{poll=model:atom(read, Key), worker=3, database=DataBase}),
   model:start(#db_conf{poll=model:atom(write, Key), worker=1, database=DataBase}),
   MaxId = max_id(model:atom(read, Key), Key),
   erlang:send_after(10000, self(), write),
+  guard_super:start_guard(Key),
   {ok, {Key, MaxId}}.
 
 handle_cast(stop, State) ->
@@ -51,9 +51,9 @@ handle_call(_Msg, _From, State) ->
 
 write_back(Key, Pid) ->
   %% mysql:fetch(normal, <<"select sleep(23);">>),
-  data:write_add(Key),
-  data:write_update(Key),
-  data:write_del(Key),
+  data_ets:write_add(Key),
+  data_ets:write_update(Key),
+  data_ets:write_del(Key),
   %% io:format("sync mysql ~n"),
   erlang:send_after(10000, Pid, write),
   ok.

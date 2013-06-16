@@ -31,5 +31,13 @@ init([]) ->
     supervisor,
     []
    },
-  {ok, { {one_for_one, 5, 10}, [Data]} }.
+  Guard = {
+    guard_super,
+    {supervisor, start_link, [{local, guard_super}, guard_super, []]},
+    permanent,
+    infinity,
+    supervisor,
+    []
+   },
+  {ok, { {one_for_one, 5, 10}, [Data, Guard]} }.
 

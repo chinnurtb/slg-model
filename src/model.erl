@@ -218,8 +218,15 @@ module_new(Key) ->
 %% record_info(fields,x)
 %% 在生成之前先使用一张ets表获取用户输入，之后一次性生成.
 
+%% 安全新建ets表
+safe_create(AtomName, Options) ->
+  case ets:info(AtomName) of
+    undefined -> ets:new(AtomName, Options);
+    _Other -> AtomName
+  end.
+
 init_m() ->
-  data:new(slg_model_map).
+  safe_create(slg_model_map, [named_table, public, set, {keypos, 2}]).
 
 %% Key为复数.
 add_m(Key, KeyList, Db) ->
