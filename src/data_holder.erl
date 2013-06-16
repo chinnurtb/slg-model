@@ -30,6 +30,7 @@ init([DataBase, Key]) ->
   MaxId = max_id(model:atom(read, Key), Key),
   data_guard_super:start_guard(Key),
   data_writer_super:start_writer(Key),
+  data_clear_super:start_clear(Key),
   {ok, {Key, MaxId}}.
 
 handle_cast(stop, State) ->

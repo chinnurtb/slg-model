@@ -23,6 +23,14 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+  Clear = {
+    data_clear_super,
+    {supervisor, start_link, [{local, data_clear_super}, data_clear_super, []]},
+    permanent,
+    infinity,
+    supervisor,
+    []
+   },
   Writer = {
     data_writer_super,
     {supervisor, start_link, [{local, data_writer_super}, data_writer_super, []]},
@@ -47,5 +55,4 @@ init([]) ->
     supervisor,
     []
    },
-  {ok, { {one_for_one, 5, 10}, [Data, Guard, Writer]} }.
-
+  {ok, { {one_for_one, 5, 10}, [Clear, Data, Guard, Writer]} }.
