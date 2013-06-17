@@ -52,6 +52,7 @@ guard_f() ->
                  end
         end,
   lists:foreach(Fun, R),
+  erlang:erase({guard, list}),
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 其他API.
