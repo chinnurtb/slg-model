@@ -60,13 +60,13 @@ guard_f() ->
 %% 不管是查看自己或者其他玩家的数据，lookup_s或lookup_a必须先调用.
 lookup_s(Table, UsrId) ->
   case guard_r(Table, UsrId) of
-    {error, R} -> {error, R};
+    {error, _} -> lookup_s(Table, UsrId);   %% 递归下去，直到成功.
     ok -> data_ets:find_s(Table, UsrId)
   end.
 
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
-    {error, R} -> {error, R};
+    {error, _} -> lookup_a(Table, UsrId);   %% 递归下去，直到成功.
     ok -> data_ets:find_a(Table, UsrId)
   end.
 
