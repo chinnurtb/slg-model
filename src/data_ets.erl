@@ -37,7 +37,7 @@ load_s(EtsTable, UsrId) ->
   case Model:select(model:atom(read, EtsTable), UsrId) of
     [] -> {error, not_exist};
     [R]-> K = element(2, R),
-          ets:insert(EtsTable, {single, {key, UsrId}, K}),
+          ets:insert(EtsTable, {single, {key, UsrId}, K, get_time()}),
           ets:insert(EtsTable, R),
           {ok, R}
   end.
@@ -51,7 +51,7 @@ load_a(EtsTable, UsrId) ->
                           ets:insert(EtsTable, R),
                           [K|KL]
                       end, [], List),
-  ets:insert(EtsTable, {array, {key, UsrId}, KList}),
+  ets:insert(EtsTable, {array, {key, UsrId}, KList, get_time()}),
   {ok, List}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 查询函数接口
@@ -60,29 +60,28 @@ load_a(EtsTable, UsrId) ->
 lookup_s(Table, UsrId) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
-    [{single, {key, UsrId}, Id}] ->
-      [R] = ets:lookup(Table, Id), {ok, R}
+    [{single, {key, UsrId}, Id, Time}] ->
+      [R] = ets:lookup(Table, Id),
+      case get_time() of
+        Time -> do_nothing;
+        T -> ets:update_element(Table, {key, UsrId}, {4, T})
+      end,
+      {ok, R}
   end.
 
 %% 通过key查找数组数据
 lookup_a(Table, UsrId) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
-    [{array, {key, UsrId}, Ids}] ->
+    [{array, {key, UsrId}, Ids, Time}] ->
+      case get_time() of
+        Time -> do_nothing;
+        T -> ets:update_element(Table, {key, UsrId}, {4, T})
+      end,
       L = lists:map(fun(Id) -> [R] = ets:lookup(Table, Id), R end, Ids),
       {ok, L}
   end.
 
-lookup_i(Table, UsrId, Id) ->
-  case ets:lookup(Table, {key, UsrId}) of
-    [] -> {error, not_exist};
-    [{array, {key, UsrId}, Ids}] ->
-      true = lists:memeber(Id, Ids),
-      case ets:lookup(Table, Id) of
-        [] -> {error, not_exist};
-        [R]-> {ok, R}
-      end
-  end.
 lookup_i(Table, Id) ->
   case ets:lookup(Table, Id) of
     [] -> {error, not_exist};
@@ -93,7 +92,7 @@ lookup_i(Table, Id) ->
 update_s(Table, UsrId, Data) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
-    [{single, {key, UsrId}, Id}] ->
+    [{single, {key, UsrId}, Id, _}] ->
       Id = element(2, Data),
       ets:insert(Table, Data), ok
   end.
@@ -106,7 +105,7 @@ update_i(Table, Data) ->
 delete_s(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
-    [{single, {key, UsrId}, Id}] ->
+    [{single, {key, UsrId}, Id, _}] ->
       ets:delete(Table, Id),
       ets:delete(Table, {key, UsrId}),
       ok
@@ -116,32 +115,29 @@ delete_s(Table, UsrId, Id) ->
 delete_i(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
-    [{array, {key, UsrId}, Ids}] ->
+    [{array, {key, UsrId}, Ids, _}] ->
       ets:delete(Table, Id),
-      ets:insert(Table, {array, {key, UsrId}, lists:delete(Id, Ids)}),
+      ets:update_element(Table, {key, UsrId}, {3, lists:delete(Id, Ids)}),
       ok
   end.
 
 %% 增加一个新条目
 add_i(Table, UsrId, Data) ->
   Id = element(2, Data),
-  Ids = case ets:lookup(Table, {key, UsrId}) of
-          [] -> [];
-          [{array, {key, UsrId}, Ids1}] -> Ids1
-        end,
-  ets:insert(Table, {array, {key, UsrId}, [Id|Ids]}),
+  [{array, {key, UsrId}, Ids, _}] = ets:lookup(Table, {key, UsrId}),
   ets:insert(Table, Data),
+  ets:update_element(Table, {key, UsrId}, {3, [Id|Ids]}),
   ok.
 
 %% 添加单条
 add_s(Table, UsrId, Data) ->
   Id = element(2, Data),
   case ets:lookup(Table, {key, UsrId}) of
-    [{single, {key, UsrId}, _Id}] ->
+    [{single, {key, UsrId}, _Id, _}] ->
       {error, already_exist};
     [] ->
-      ets:insert(Table, {single, {key, UsrId}, Id}),
       ets:insert(Table, Data),
+      ets:insert(Table, {single, {key, UsrId}, Id, get_time()}),
       ok
   end.
 
@@ -159,3 +155,16 @@ find_a(Table, UsrId) ->
 
 find_i(Table, Id) ->
   lookup_i(Table, Id).
+
+%% 该字段没有具体的时间含义，因为erlang:now有性能问题，不能频繁调用.
+%% 所以某条数据的最后访问时间将取内存里固定的一个时间而已.
+get_time() ->
+  case erlang:get(time_current) of
+    undefined ->
+      {MegaSecs, Secs, _} = erlang:now(),
+      T = MegaSecs * 1000000 + Secs,
+      erlang:put(time_current, T),
+      T;
+    R -> R
+  end.
+
