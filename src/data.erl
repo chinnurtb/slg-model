@@ -1,7 +1,7 @@
 -module(data).
 -export([lookup_s/2, lookup_a/2, lookup_i/2]).
 -export([guard_f/0]).
--export([update_s/3, update_i/2, delete_i/3, delete_s/3]).
+-export([update_s/3, update_i/2, delete_i/3, delete_s/3, clear/1]).
 -export([add_s/3, add_i/3, id/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
@@ -23,11 +23,11 @@ guard_r(Table, UsrId) ->
 guard_w(Table, UsrId) ->
   case erlang:get({guard, Table, UsrId}) of
     undefined ->
-      case data_guard:read_on(Table, UsrId, self()) of
+      case data_guard:write_on(Table, UsrId, self()) of
         ok -> erlang:put({guard, Table, UsrId}, true),
-              guard_a(Table, UsrId, reader),
+              guard_a(Table, UsrId, writer),
               ok;
-        error -> {error, read_guard_failed}
+        error -> {error, write_guard_failed}
       end;
     true -> ok
   end.
@@ -110,4 +110,19 @@ add_i(Table, UsrId, Data) ->
     {error, R} -> {error, R}
   end.
 
+clear_fun(Table, UsrId) ->
+  case guard_w(Table, UsrId) of
+    ok ->
+      data_ets:clear(Table, UsrId),
+      guard_f();
+    {error, _} -> do_nothing
+  end.
+
+%% 对数据进行清除，有可能会失败，不过没关系.
+clear(Table) ->
+  All = data_ets:out_time(Table),
+  [clear_fun(Table, UsrId) || UsrId <- All],
+  ok.
+
+%% 获取id.
 id(Key) -> data_holder:id(Key).

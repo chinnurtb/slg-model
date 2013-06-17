@@ -7,6 +7,7 @@
 
 -include("data.hrl").
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 %% 安全新建ets表
 safe_create(AtomName, Options) ->
@@ -156,8 +157,23 @@ find_a(Table, UsrId) ->
 find_i(Table, Id) ->
   lookup_i(Table, Id).
 
+%% 清除玩家单元数据.
+clear(Table, UsrId) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [{single, {key, UsrId}, Id, _}] ->
+      ets:delete(Table, Id),
+      ets:delete(Table, {key, UsrId});
+    [{array, {key, UsrId}, Ids, _}] ->
+      [ets:delete(Table, Id) || Id <- Ids],
+      ets:delete(Table, {key, UsrId})
+  end.
+
 %% 该字段没有具体的时间含义，因为erlang:now有性能问题，不能频繁调用.
 %% 所以某条数据的最后访问时间将取内存里固定的一个时间而已.
+current() ->
+  {MegaSecs, Secs, _} = erlang:now(),
+  MegaSecs * 1000000 + Secs.
+
 get_time() ->
   case erlang:get(time_current) of
     undefined ->
@@ -168,3 +184,8 @@ get_time() ->
     R -> R
   end.
 
+%% 筛选最后一次访问时间超过6小时的数据，对其进行清除操作.
+out_time(Table) ->
+  Now = current(),
+  MS = ets:fun2ms(fun({_, {key, UsrId}, _, Time}) when ((Now - 3 ) > Time) -> UsrId end),
+  ets:select(Table, MS).
