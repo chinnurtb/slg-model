@@ -155,6 +155,7 @@ try_writer(UsrID, PID) ->
   case does_reader(UsrID) of
     true -> error;
     false ->
+      io:format("does_reader ~p~n", [erlang:get({reader, UsrID})]),
       case does_writer(UsrID) of
         true -> error;
         false ->

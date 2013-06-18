@@ -49,7 +49,8 @@ guard_f() ->
             ok = case Role of
                    reader -> data_guard:read_off(Table, UsrId, self());
                    writer -> data_guard:write_off(Table, UsrId, self())
-                 end
+                 end,
+            erlang:erase({guard, Table, UsrId})
         end,
   lists:foreach(Fun, R),
   erlang:erase({guard, list}),
@@ -114,6 +115,7 @@ add_i(Table, UsrId, Data) ->
 clear_fun(Table, UsrId) ->
   case guard_w(Table, UsrId) of
     ok ->
+      io:format("clear ~p ~p~n", [Table, UsrId]),
       data_ets:clear(Table, UsrId),
       guard_f();
     {error, _} -> do_nothing
