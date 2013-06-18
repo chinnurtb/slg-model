@@ -103,7 +103,7 @@ grant(Int, W) ->
 
 %% 获取所有的migrate模块，并排序.
 all_migrates(Path) ->
-  AllFile = os:cmd("ls " ++ Path),
+  AllFile = os:cmd("ls " ++ Path ++ "/*.erl"),
   FileArray = string:tokens(AllFile, "\n"),
   lists:sort(fun(A, B) ->
                  {_, TimeA} = parse_module_file_name(A),
@@ -129,6 +129,7 @@ delete(Version) ->
 %% 执行migrate操作
 do(Path, UsrName, Password, Database) ->
   create_db(Database, UsrName, Password),
+  source(Database, UsrName, Password, Path ++ "/db.sql"),
   create_migrate_t(Database, UsrName, Password),
   migrate = model:start(#db_conf{poll=migrate, username=UsrName, worker=1,
                                  password=Password, database=Database}),
