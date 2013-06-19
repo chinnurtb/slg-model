@@ -22,11 +22,11 @@ stop(Key) ->
 max_id(Poll, Table) ->
   model:max_id(Poll, Table).
 
-init([DataBase, Key]) ->
+init([Dbc, Key]) ->
   data_ets:new(Key),
   model:module_new(Key),
-  model:start(#db_conf{poll=model:atom(read, Key), worker=3, database=DataBase}),
-  model:start(#db_conf{poll=model:atom(write, Key), worker=1, database=DataBase}),
+  model:start(Dbc#db_conf{poll=model:atom(read, Key), worker=3}),
+  model:start(Dbc#db_conf{poll=model:atom(write, Key), worker=1}),
   MaxId = max_id(model:atom(read, Key), Key),
   data_guard_super:start_guard(Key),
   data_writer_super:start_writer(Key),
