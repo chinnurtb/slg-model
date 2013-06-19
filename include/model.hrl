@@ -8,3 +8,13 @@
           database="slg_model" ::list(),
           worker=33 ::integer()
          }).
+
+%% MySQL result record:
+-record(mysql_result,
+	{fieldinfo=[],
+	 rows=[],
+	 affectedrows=0,
+	 insertid=0,
+	 error="",
+	 errcode=0,
+	 errsqlstate=""}).
