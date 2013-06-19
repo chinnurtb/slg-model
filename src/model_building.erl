@@ -11,6 +11,9 @@ select(Poll, Cond) when is_list(Cond) ->
 select(Poll, UserId) ->
   model:select_n(Poll, db_building, buildings, all, [{user_id, UserId}]).
 
+update(Poll, {Id, List}) ->
+  List1 = model:pos_attr(model_record:m(buildings), List),
+  model:update_n(Poll, Id, buildings, List1);
 update(Poll, DbBuilding) ->
   model:update_n(Poll, model_record:m(buildings), buildings, DbBuilding).
 
@@ -27,6 +30,10 @@ select(Cond) when is_list(Cond) ->
   model:select_t(db_building, buildings, all, Cond);
 select(UserId) ->
   model:select_t(db_building, buildings, all, [{user_id, UserId}]).
+
+update({Id, List}) ->
+  List1 = model:pos_attr(model_record:m(buildings), List),
+  model:update_t(Id, buildings, List1);
 
 update(DbBuilding) ->
   model:update_t(model_record:m(buildings), buildings, DbBuilding).

@@ -3,6 +3,7 @@
 -export([guard_f/0]).
 -export([update_s/3, update_i/2, delete_i/3, delete_s/3, clear/1]).
 -export([add_s/3, add_i/3, id/1]).
+-export([lookup_s_e/3, lookup_i_e/3, update_s_e/3, update_i_e/3]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
 
@@ -65,6 +66,10 @@ lookup_s(Table, UsrId) ->
     ok -> data_ets:find_s(Table, UsrId)
   end.
 
+%% 按元素查找.
+lookup_s_e(Table, UsrId, Pos) ->
+  data_ets:lookup_s_e(Table, UsrId, Pos).
+
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
     {error, _} -> lookup_a(Table, UsrId);   %% 递归下去，直到成功.
@@ -76,16 +81,32 @@ lookup_a(Table, UsrId) ->
 lookup_i(Table, Id) ->
   data_ets:find_i(Table, Id).
 
+%% 按元素查找.
+lookup_i_e(Table, Id, Pos) ->
+  data_ets:lookup_i_e(Table, Id, Pos).
+
 update_s(Table, UsrId, Data) ->
   case data_ets:update_s(Table, UsrId, Data) of
     ok -> data_writer:event(Table, upt, Data), ok;
     {error, R} -> {error, R}
   end.
 
+%% 按位置更新.
+update_s_e(Table, UsrId, List) ->
+  {ok, Id} = data_ets:update_s_e(Table, UsrId, List),
+  data_writer:event(Table, upt, {Id, List}),
+  ok.
+
 %% 分条更新
 update_i(Table, Data) ->
   data_ets:update_i(Table, Data),
   data_writer:event(Table, upt, Data),
+  ok.
+
+%% 按位置更新.
+update_i_e(Table, Id, List) ->
+  data_ets:update_i_e(Table, Id, List),
+  data_writer:event(Table, upt, {Id, List}),
   ok.
 
 delete_s(Table, UsrId, Id) ->

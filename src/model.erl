@@ -3,7 +3,7 @@
 
 -include("data.hrl").
 -include_lib("eunit/include/eunit.hrl").
--include("deps/mysql/include/mysql.hrl").
+%%-include("deps/mysql/include/mysql.hrl").
 
 %% 数据库SQL日志记录输出.
 logger(_, _, _Level, _Fun) ->
@@ -62,6 +62,11 @@ update_t([_Id|Keys], Table, Data) ->
   Kv = kv_list(Keys, Values),
   SQL = model_sql:update(Table, Kv, [{id, Id}]),
   model_exec:update_t(SQL),
+  ok;
+%% 简单列表修改.
+update_t(Id, Table, List) ->
+  SQL = model_sql:update(Table, List, [{id, Id}]),
+  model_exec:update_t(SQL),
   ok.
 
 %% Data为Record的实例.
@@ -70,6 +75,11 @@ update_n(Poll, [_Id|Keys], Table, Data) ->
   true = (length(Keys) == length(Values)),
   Kv = kv_list(Keys, Values),
   SQL = model_sql:update(Table, Kv, [{id, Id}]),
+  model_exec:update_n(Poll, SQL),
+  ok;
+%% 简单列表修改.
+update_n(Poll, Id, Table, List) ->
+  SQL = model_sql:update(Table, List, [{id, Id}]),
   model_exec:update_n(Poll, SQL),
   ok.
 
@@ -156,6 +166,13 @@ count_test() ->
   true = is_integer(S),
   S.
 
+pos_attr(Attrs, List) ->
+%%  io:format("~p ~p", [Attrs, List]),
+  lists:map(fun({Pos, V}) ->
+                %%io:format("pos ~p attr ~p~n", [Pos, Attrs]),
+                N = lists:nth(Pos-1, Attrs),
+                {N, V}
+            end, List).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 动态生成模块
 
@@ -173,8 +190,11 @@ module_new(Key) ->
      model:select_n(Poll, ~p, ~p, all, [{user_id, UserId}]).",
                              [DbAtom, Table, DbAtom, Table]),
   SelectFun = lists:flatten(SelectFun1),
-  UpdateFun1 = io_lib:format("update(Poll, Db) ->
-     model:update_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table]),
+  UpdateFun1 = io_lib:format("update(Poll, {Id, List}) ->
+             List1 = model:pos_attr(model_record:m(~p), List),
+             model:update_n(Poll, Id, ~p, List1);
+            update(Poll, Db) ->
+     model:update_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFun = lists:flatten(UpdateFun1),
   InsertFun1 = io_lib:format("insert(Poll, Db) ->
      model:insert_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table]),
@@ -194,8 +214,11 @@ module_new(Key) ->
      model:select_t(~p, ~p, all, [{user_id, UserId}]).",
                               [DbAtom, Table, DbAtom, Table]),
   SelectFunt = lists:flatten(SelectFunt1),
-  UpdateFunt1 = io_lib:format("update(Db) ->
-     model:update_t(model_record:m(~p), ~p, Db).", [Key, Table]),
+  UpdateFunt1 = io_lib:format("update({Id, List}) ->
+     List1 = model:pos_attr(model_record:m(~p), List),
+     model:update_t(Id, ~p, List1);
+    update(Db) ->
+     model:update_t(model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFunt = lists:flatten(UpdateFunt1),
   InsertFunt1 = io_lib:format("insert(Db) ->
      model:insert_t(model_record:m(~p), ~p, Db).", [Key, Table]),

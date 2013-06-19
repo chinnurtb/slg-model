@@ -117,7 +117,7 @@ update_s_e(Table, UsrId, List) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
     [{single, {key, UsrId}, Id, _}] ->
-      ets:update_element(Table, Id, List), ok
+      ets:update_element(Table, Id, List), {ok, Id}
   end.
 
 %% 分条更新
@@ -127,7 +127,7 @@ update_i(Table, Data) ->
 
 update_i_e(Table, Id, List) ->
   ets:update_element(Table, Id, List),
-  ok.
+  {ok, Id}.
 
 delete_s(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
