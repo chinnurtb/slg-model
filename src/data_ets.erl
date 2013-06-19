@@ -70,6 +70,14 @@ lookup_s(Table, UsrId) ->
       {ok, R}
   end.
 
+%% 按pos查找属性，必须要确认数据存在才能用.
+lookup_s_e(Table, UsrId, Pos) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{single, {key, UsrId}, Id, _Time}] ->
+      {ok, ets:lookup_element(Table, Id, Pos)}
+  end.
+
 %% 通过key查找数组数据
 lookup_a(Table, UsrId) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -89,6 +97,12 @@ lookup_i(Table, Id) ->
     [R]-> {ok, R}
   end.
 
+%% 按pos查找数据.
+lookup_i_e(Table, Id, Pos) ->
+  R = ets:lookup_element(Table, Id, Pos),
+  {ok, R}.
+
+
 %% 更新操作
 update_s(Table, UsrId, Data) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -98,9 +112,21 @@ update_s(Table, UsrId, Data) ->
       ets:insert(Table, Data), ok
   end.
 
+%% 更新部分数据.
+update_s_e(Table, UsrId, List) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{single, {key, UsrId}, Id, _}] ->
+      ets:update_element(Table, Id, List), ok
+  end.
+
 %% 分条更新
 update_i(Table, Data) ->
   ets:insert(Table, Data),
+  ok.
+
+update_i_e(Table, Id, List) ->
+  ets:update_element(Table, Id, List),
   ok.
 
 delete_s(Table, UsrId, Id) ->
