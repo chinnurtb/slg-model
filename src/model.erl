@@ -153,7 +153,11 @@ max(Poll, Column, Table) ->
   [[Id]] = mysql:get_result_rows(Result),
   Id.
 
-max_id(Poll, Table) -> max(Poll, id, Table).
+max_id(Poll, Table) ->
+  case ?MODULE:max(Poll, id, Table) of
+    undefined -> 0;
+    Id ->  Id
+  end.
 
 count(Poll, Cond, Table) ->
   Sql = model_sql:count(Table, Cond),
