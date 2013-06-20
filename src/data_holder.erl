@@ -28,7 +28,6 @@ init([Dbc, Key]) ->
   model:start(Dbc#db_conf{poll=model:atom(read, Key), worker=3}),
   model:start(Dbc#db_conf{poll=model:atom(write, Key), worker=1}),
   MaxId = max_id(model:atom(read, Key), Key),
-  io:format("max id ~p~n", [MaxId]),
   data_guard_super:start_guard(Key),
   data_writer_super:start_writer(Key),
   data_clear_super:start_clear(Key),
@@ -44,9 +43,7 @@ handle_call(id, _From, {Key, MaxID, Dbc}) ->
   %% id策略还没考虑进来
   OID = MaxID div Base,
   SID = MaxID rem Base,
-  io:format("id ~p ~p~n", [OID, SID]),
   MaxID1 = (OID+1) * Base + SID,
-  io:format("id ~p~n", [MaxID1]),
   {reply, MaxID1, {Key, MaxID1, Dbc}};
 
 handle_call(_Msg, _From, State) ->
