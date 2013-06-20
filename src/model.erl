@@ -35,6 +35,11 @@ atom_prefix(Key, Prefix) ->
 %% 产生原子.
 atom(Suffix, Key) -> atom_suffix(Key, Suffix).
 
+atom_poll(Suffix, Key) ->
+  L = atom_to_list(Key) ++ "_"++ atom_to_list(Suffix) ++
+    "" ++ integer_to_list(model:sid_g()),
+  list_to_atom(L).
+
 %% record
 record_atom(Key) ->
   S = "db_" ++ atom_to_list(Key),
@@ -44,12 +49,10 @@ record_atom(Key) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 更高层次的执行
 select_t(Record, Table, Column, Cond) ->
   SQL = model_sql:select(Table, Column, Cond),
-  io:format("sql 1 ~p~n", [SQL]),
   model_exec:select_t(Record, SQL).
 
 select_n(Poll, Record, Table, Column, Cond) ->
   SQL = model_sql:select(Table, Column, Cond),
-  io:format("sql 2 ~p~n", [SQL]),
   model_exec:select_n(Poll, Record, SQL).
 
 kv_list([K], [V]) ->  [{K, V}];
@@ -86,7 +89,6 @@ update_n(Poll, Id, Table, List) ->
 %% 参数为普通kv
 insert_n(Poll, Kv, Table) ->
   SQL = model_sql:insert(Table, Kv),
-  io:format("sql ~p~n", [SQL]),
   model_exec:insert_n(Poll, SQL).
 
 %% 参数为记录
@@ -95,14 +97,12 @@ insert_n(Poll, Keys, Table, Data) when is_list(Keys) ->
   true = (length(Keys) == length(Values)),
   Kv = kv_list(Keys, Values),
   SQL = model_sql:insert(Table, Kv),
-  io:format("sql ~p~n", [SQL]),
   model_exec:insert_n(Poll, SQL).
 
 
 %% 参数为普通kv
 insert_t(Kv, Table) ->
   SQL = model_sql:insert(Table, Kv),
-  io:format("sql ~p~n", [SQL]),
   model_exec:insert_t(SQL).
 
 %% 参数为记录
@@ -111,7 +111,6 @@ insert_t(Keys, Table, Data) when is_list(Keys) ->
   true = (length(Keys) == length(Values)),
   Kv = kv_list(Keys, Values),
   SQL = model_sql:insert(Table, Kv),
-  io:format("sql2 ~p~n", [SQL]),
   model_exec:insert_t(SQL).
 
 delete_n(Poll, {in, IdList}, Table) ->
@@ -259,6 +258,18 @@ init_m() ->
 add_m(Key, KeyList, Db) ->
   ets:insert(slg_model_map, {Key, KeyList, Db}).
 
+sid_g() ->
+  case catch model_config:sid() of
+    ID when is_integer(ID) -> ID;
+    _ -> -1
+  end.
+
+sid_s(SID) ->
+  M1 = data_smerl:new(model_config),
+  {ok, M2} = data_smerl:add_func(M1, "sid() -> " ++ integer_to_list(SID) ++ "."),
+  M3 = data_smerl:set_exports(M2, [{sid, 0}]),
+  data_smerl:compile(M3).
+
 %% 生成动态record映射.
 gen_m() ->
   All = ets:tab2list(slg_model_map),
@@ -279,8 +290,7 @@ gen_m() ->
 gen_h() ->
   All = ets:tab2list(slg_model_map),
   lists:foreach(fun({K, _, Db}) ->
-                    _R = data_holder_super:start_holder(Db, K)
-                    %%io:format("this R ~p~n", [R])
+                    {ok, _} = data_holder_super:start_holder(Db, K)
                 end,
                 All),
   ok.
