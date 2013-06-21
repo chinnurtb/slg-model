@@ -8,7 +8,7 @@
 
 %% 启动模块.
 start_link(Table) ->
-  Atom = model:atom_poll(writer, Table),
+  Atom = model:atom(writer, Table),
   gen_server:start_link({local, Atom}, ?MODULE, [Table], []).
 
 %% db事件.
@@ -27,7 +27,7 @@ handle_cast(stop, State) ->
 handle_cast({event, Table, Event, Db}, State) ->
   io:format("event ~p db~p ~n", [Event, Db]),
   Model = model:model(Table),
-  Poll = model:atom(write, Table),
+  Poll = model:atom_poll(Table, write),
   case Event of
     add -> Model:insert(Poll, Db);
     upt -> Model:update(Poll, Db);

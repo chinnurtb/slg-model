@@ -123,13 +123,17 @@ delete_i(Table, UsrId, Id) ->
 
 add_s(Table, UsrId, Data) ->
   case data_ets:add_s(Table, UsrId, Data) of
-    ok -> data_writer:event(Table, add, Data), ok;
+    ok ->
+      io:format("this ~n"),
+      data_writer:event(Table, add, Data), ok;
     {error, R} -> {error, R}
   end.
 
 add_i(Table, UsrId, Data) ->
   case data_ets:add_i(Table, UsrId, Data) of
-    ok -> data_writer:event(Table, add, Data), ok;
+    ok ->
+      io:format("this2 ~n"),
+      data_writer:event(Table, add, Data), ok;
     {error, R} -> {error, R}
   end.
 

@@ -7,8 +7,8 @@
 
 %% 数据库SQL日志记录输出.
 logger(_, _, _Level, _Fun) ->
-  %% {Str, Val} = _Fun(),
-  %% io:format("~p ~p~n", [Str, Val]).
+  {Str, Val} = _Fun(),
+  io:format("~p~n", [Val]),
   pass.
 
 %% 开启一个poll
