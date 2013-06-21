@@ -151,3 +151,20 @@ active_record是对表格数据的ORM，但是游戏服务器大量只是单表�
 ## ets层
 
 slg_model为每一个MySql表都建立一张对应的ets表，如果需要检索数据，首先在ets表中查询，如果表中没有，则调用相应的数据库模块接口将其加载到ets，然后返回，这部分操作在`data_ets`中实现.
+
+
+# 数据事件
+
+当数据发生变化时，会有以下事件，你可以通过spt_notify订阅这些事件，做成相应的处理:
+
+* slg_m_upt_s {Table, UsrId, Data}: 单条玩家数据发生更新。
+* slg_m_upt_s_e {Table, UsrId, Id, List}: 单条玩家数据发生元素更新。
+* slg_m_upt_i {Table, Data}: 多条玩家数据发生更新。
+* slg_m_upt_i_e {Table, Id, List}： 单条玩家数据发生更新。
+* slg_m_del_s {Table, UsrId, Id}： 单条玩家数据发生删除。
+* slg_m_del_i {Table, UsrId, Id}: 多条玩家数据发生删除。
+* slg_m_add_s {Table, UsrId, Data}: 单条玩家数据增加。
+* slg_m_add_i {Table, UsrId, Data}： 多条玩家数据增加。
+
+通过`spt_notify:sub(slg_m_upt_s, Fun/1)`注册这些事件，当时事件发生时Fun/1会被被调用。
+
