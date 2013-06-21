@@ -25,7 +25,7 @@ handle_cast(stop, State) ->
   {stop, normal, State};
 
 handle_cast({event, Table, Event, Db}, State) ->
-  io:format("event ~p db~p ~n", [Event, Db]),
+  io:format("* event ~p ~p ~n", [Event, Db]),
   Model = model:model(Table),
   Poll = model:atom_poll(Table, write),
   case Event of
