@@ -87,44 +87,53 @@ lookup_i_e(Table, Id, Pos) ->
 
 update_s(Table, UsrId, Data) ->
   case data_ets:update_s(Table, UsrId, Data) of
-    ok -> data_writer:event(Table, upt, Data), ok;
+    ok ->
+      spt_notify:post(slg_m_upt_s, {Table, UsrId, Data}),
+      data_writer:event(Table, upt, Data), ok;
     {error, R} -> {error, R}
   end.
 
 %% 按位置更新.
 update_s_e(Table, UsrId, List) ->
   {ok, Id} = data_ets:update_s_e(Table, UsrId, List),
+  spt_notify:post(slg_m_upt_s_e, {Table, UsrId, Id, List}),
   data_writer:event(Table, upt, {Id, List}),
   ok.
 
 %% 分条更新
 update_i(Table, Data) ->
   data_ets:update_i(Table, Data),
+  spt_notify:post(slg_m_upt_i, {Table, Data}),
   data_writer:event(Table, upt, Data),
   ok.
 
 %% 按位置更新.
 update_i_e(Table, Id, List) ->
   data_ets:update_i_e(Table, Id, List),
+  spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
   data_writer:event(Table, upt, {Id, List}),
   ok.
 
 delete_s(Table, UsrId, Id) ->
   case data_ets:delete_s(Table, UsrId, Id) of
-    ok -> data_writer:event(Table, del, Id), ok;
+    ok ->
+      spt_notify:post(slg_m_del_s, {Table, UsrId, Id}),
+      data_writer:event(Table, del, Id), ok;
     {error, R} -> {error, R}
   end.
 
 delete_i(Table, UsrId, Id) ->
   case data_ets:delete_i(Table, UsrId, Id) of
-    ok -> data_writer:event(Table, del, Id), ok;
+    ok ->
+      spt_notify:post(slg_m_del_i, {Table, UsrId, Id}),
+      data_writer:event(Table, del, Id), ok;
     {error, R} -> {error, R}
   end.
 
 add_s(Table, UsrId, Data) ->
   case data_ets:add_s(Table, UsrId, Data) of
     ok ->
-      io:format("this ~n"),
+      spt_notify:post(slg_m_add_s, {Table, UsrId, Data}),
       data_writer:event(Table, add, Data), ok;
     {error, R} -> {error, R}
   end.
@@ -132,7 +141,7 @@ add_s(Table, UsrId, Data) ->
 add_i(Table, UsrId, Data) ->
   case data_ets:add_i(Table, UsrId, Data) of
     ok ->
-      io:format("this2 ~n"),
+      spt_notify:post(slg_m_add_i, {Table, UsrId, Data}),
       data_writer:event(Table, add, Data), ok;
     {error, R} -> {error, R}
   end.

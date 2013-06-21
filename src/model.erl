@@ -8,7 +8,7 @@
 %% 数据库SQL日志记录输出.
 logger(_, _, _Level, _Fun) ->
   {Str, Val} = _Fun(),
-  io:format("~p~n", [Val]),
+  io:format(Str ++ "~n", Val),
   pass.
 
 %% 开启一个poll
@@ -184,7 +184,7 @@ module_new(Key) ->
   Atom = Key,
   ModuleAtom = atom_prefix(Atom, model),
   DbAtom = record_atom(Key),
-  M1 = data_smerl:new(ModuleAtom),
+  M1 = spt_smerl:new(ModuleAtom),
   Table = Key,
   %% 普通查询函数.
   SelectFun1 = io_lib:format("select(Poll, Cond) when is_list(Cond) ->
@@ -206,10 +206,10 @@ module_new(Key) ->
      model:delete_n(Poll, ID, ~p).
    ", [Table]),
   DeleteFun = lists:flatten(DeleteFun1),
-  {ok, M2} = data_smerl:add_func(M1, SelectFun),
-  {ok, M3} = data_smerl:add_func(M2, UpdateFun),
-  {ok, M4} = data_smerl:add_func(M3, InsertFun),
-  {ok, M5} = data_smerl:add_func(M4, DeleteFun),
+  {ok, M2} = spt_smerl:add_func(M1, SelectFun),
+  {ok, M3} = spt_smerl:add_func(M2, UpdateFun),
+  {ok, M4} = spt_smerl:add_func(M3, InsertFun),
+  {ok, M5} = spt_smerl:add_func(M4, DeleteFun),
   %% 事务查询函数
   SelectFunt1 = io_lib:format("select(Cond) when is_list(Cond) ->
      model:select_t(~p, ~p, all, Cond);
@@ -229,13 +229,13 @@ module_new(Key) ->
   DeleteFunt1 = io_lib:format("delete(ID) ->
      model:delete_t(ID, ~p).", [Table]),
   DeleteFunt = lists:flatten(DeleteFunt1),
-  {ok, M6} = data_smerl:add_func(M5, SelectFunt),
-  {ok, M7} = data_smerl:add_func(M6, UpdateFunt),
-  {ok, M8} = data_smerl:add_func(M7, InsertFunt),
-  {ok, M9} = data_smerl:add_func(M8, DeleteFunt),
-  M10 = data_smerl:set_exports(M9, [{select,2}, {update,2}, {insert,2}, {delete,2},
+  {ok, M6} = spt_smerl:add_func(M5, SelectFunt),
+  {ok, M7} = spt_smerl:add_func(M6, UpdateFunt),
+  {ok, M8} = spt_smerl:add_func(M7, InsertFunt),
+  {ok, M9} = spt_smerl:add_func(M8, DeleteFunt),
+  M10 = spt_smerl:set_exports(M9, [{select,2}, {update,2}, {insert,2}, {delete,2},
                                     {select,1}, {update,1}, {insert,1}, {delete,1}]),
-  data_smerl:compile(M10),
+  spt_smerl:compile(M10),
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 生成映射表.
@@ -265,24 +265,24 @@ sid_g() ->
   end.
 
 sid_s(SID) ->
-  M1 = data_smerl:new(model_config),
-  {ok, M2} = data_smerl:add_func(M1, "sid() -> " ++ integer_to_list(SID) ++ "."),
-  M3 = data_smerl:set_exports(M2, [{sid, 0}]),
-  data_smerl:compile(M3).
+  M1 = spt_smerl:new(model_config),
+  {ok, M2} = spt_smerl:add_func(M1, "sid() -> " ++ integer_to_list(SID) ++ "."),
+  M3 = spt_smerl:set_exports(M2, [{sid, 0}]),
+  spt_smerl:compile(M3).
 
 %% 生成动态record映射.
 gen_m() ->
   All = ets:tab2list(slg_model_map),
-  M0 = data_smerl:new(model_record),
+  M0 = spt_smerl:new(model_record),
   DFun = fun({K, L, _}, F_0) ->
              F_0 ++ lists:flatten(io_lib:format("m(~p) -> ~p;", [K, L]))
          end,
   Fun = lists:foldl(DFun, "", All),
   Fun1 = Fun ++ "m(_) -> throw(map_error).",
   %% io:format("~p", [Fun1]),
-  {ok, M1} = data_smerl:add_func(M0, Fun1),
-  M2 = data_smerl:set_exports(M1, [{m, 1}]),
-  data_smerl:compile(M2),
+  {ok, M1} = spt_smerl:add_func(M0, Fun1),
+  M2 = spt_smerl:set_exports(M1, [{m, 1}]),
+  spt_smerl:compile(M2),
   gen_h(),
   ok.
 
