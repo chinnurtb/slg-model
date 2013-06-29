@@ -6,7 +6,7 @@
 %%-include("deps/mysql/include/mysql.hrl").
 
 %% 数据库SQL日志记录输出.
-logger(_, _, Level, _Fun) ->
+logger(_, _, _Level, _Fun) ->
   {Str, Val} = _Fun(),
   io:format(Str ++"~n", Val),
   pass.
@@ -51,9 +51,20 @@ select_t(Record, Table, Column, Cond) ->
   SQL = model_sql:select(Table, Column, Cond),
   model_exec:select_t(Record, SQL).
 
+%% with limit
+select_t(Record, Table, Column, Cond, Limit) ->
+  SQL = model_sql:select(Table, Column, Cond, Limit),
+  model_exec:select_t(Record, SQL).
+
 select_n(Poll, Record, Table, Column, Cond) ->
   SQL = model_sql:select(Table, Column, Cond),
   model_exec:select_n(Poll, Record, SQL).
+
+%% with limit
+select_n(Poll, Record, Table, Column, Cond, Limit) ->
+  SQL = model_sql:select(Table, Column, Cond, Limit),
+  model_exec:select_n(Poll, Record, SQL).
+
 
 kv_list([K], [V]) ->  [{K, V}];
 kv_list([K|Kl], [V|Vl]) -> [{K, V}] ++ kv_list(Kl, Vl).
@@ -184,58 +195,75 @@ module_new(Key) ->
   Atom = Key,
   ModuleAtom = atom_prefix(Atom, model),
   DbAtom = record_atom(Key),
-  M1 = spt_smerl:new(ModuleAtom),
+  M0 = spt_smerl:new(ModuleAtom),
   Table = Key,
+
+  SelectFun01 = io_lib:format("
+     select_n(Poll, Cond, Limit) ->
+     model:select_n(Poll, ~p, ~p, all, Cond, Limit).",
+                              [DbAtom, Table]),
+  SelectFun0 = lists:flatten(SelectFun01),
   %% 普通查询函数.
-  SelectFun1 = io_lib:format("select(Poll, Cond) when is_list(Cond) ->
+  SelectFun1 = io_lib:format("
+     select_n(Poll, Cond) when is_list(Cond) ->
      model:select_n(Poll, ~p, ~p, all, Cond);
-     select(Poll, UserId) when is_integer(UserId) ->
+     select_n(Poll, UserId) when is_integer(UserId) ->
      model:select_n(Poll, ~p, ~p, all, [{user_id, UserId}]).",
                              [DbAtom, Table, DbAtom, Table]),
   SelectFun = lists:flatten(SelectFun1),
-  UpdateFun1 = io_lib:format("update(Poll, {Id, List}) ->
+  UpdateFun1 = io_lib:format("update_n(Poll, {Id, List}) ->
              List1 = model:pos_attr(model_record:m(~p), List),
              model:update_n(Poll, Id, ~p, List1);
-            update(Poll, Db) ->
+            update_n(Poll, Db) ->
      model:update_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFun = lists:flatten(UpdateFun1),
-  InsertFun1 = io_lib:format("insert(Poll, Db) ->
+  InsertFun1 = io_lib:format("insert_n(Poll, Db) ->
      model:insert_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table]),
   InsertFun = lists:flatten(InsertFun1),
-  DeleteFun1 = io_lib:format("delete(Poll, ID)  ->
+  DeleteFun1 = io_lib:format("delete_n(Poll, ID)  ->
      model:delete_n(Poll, ID, ~p).
    ", [Table]),
   DeleteFun = lists:flatten(DeleteFun1),
+  {ok, M1} = spt_smerl:add_func(M0, SelectFun0),
   {ok, M2} = spt_smerl:add_func(M1, SelectFun),
   {ok, M3} = spt_smerl:add_func(M2, UpdateFun),
   {ok, M4} = spt_smerl:add_func(M3, InsertFun),
   {ok, M5} = spt_smerl:add_func(M4, DeleteFun),
+  SelectFunt01 = io_lib:format("select_t(Cond, Limit) ->
+  model:select_t(~p, ~p, all, Cond, Limit).
+  ", [DbAtom, Table]),
+  SelectFunt0 = lists:flatten(SelectFunt01),
   %% 事务查询函数
-  SelectFunt1 = io_lib:format("select(Cond) when is_list(Cond) ->
+  SelectFunt1 = io_lib:format("select_t(Cond) when is_list(Cond) ->
      model:select_t(~p, ~p, all, Cond);
-     select(UserId) when is_integer(UserId) ->
+     select_t(UserId) when is_integer(UserId) ->
      model:select_t(~p, ~p, all, [{user_id, UserId}]).",
                               [DbAtom, Table, DbAtom, Table]),
   SelectFunt = lists:flatten(SelectFunt1),
-  UpdateFunt1 = io_lib:format("update({Id, List}) ->
+  UpdateFunt1 = io_lib:format("update_t({Id, List}) ->
      List1 = model:pos_attr(model_record:m(~p), List),
      model:update_t(Id, ~p, List1);
-    update(Db) ->
+    update_t(Db) ->
      model:update_t(model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFunt = lists:flatten(UpdateFunt1),
-  InsertFunt1 = io_lib:format("insert(Db) ->
+  InsertFunt1 = io_lib:format("insert_t(Db) ->
      model:insert_t(model_record:m(~p), ~p, Db).", [Key, Table]),
   InsertFunt = lists:flatten(InsertFunt1),
-  DeleteFunt1 = io_lib:format("delete(ID) ->
+  DeleteFunt1 = io_lib:format("delete_t(ID) ->
      model:delete_t(ID, ~p).", [Table]),
   DeleteFunt = lists:flatten(DeleteFunt1),
   {ok, M6} = spt_smerl:add_func(M5, SelectFunt),
   {ok, M7} = spt_smerl:add_func(M6, UpdateFunt),
   {ok, M8} = spt_smerl:add_func(M7, InsertFunt),
   {ok, M9} = spt_smerl:add_func(M8, DeleteFunt),
-  M10 = spt_smerl:set_exports(M9, [{select,2}, {update,2}, {insert,2}, {delete,2},
-                                   {select,1}, {update,1}, {insert,1}, {delete,1}]),
-  spt_smerl:compile(M10),
+  {ok, M10} = spt_smerl:add_func(M9, SelectFunt0),
+  M11 = spt_smerl:set_exports(M10, [{select_n,2}, {update_n,2},
+                                    {insert_n,2}, {delete_n,2},
+                                    {select_t,1}, {update_t,1},
+                                    {insert_t,1}, {delete_t,1},
+                                    {select_n,3}, {select_t, 2}
+                                   ]),
+  spt_smerl:compile(M11),
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 生成映射表.

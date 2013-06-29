@@ -73,6 +73,8 @@ from(Table) -> [" FROM ", table_name(Table)].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 各种语句拼接
 
+-spec select(atom(), list(), list()) -> binary().
+
 %% 拼接查询语句
 select(Table, Column, Cond) ->
   L = "SELECT " ++ k_column_list(Column)  ++ from(Table) ++ condition(Cond) ++";",
@@ -81,6 +83,18 @@ select(Table, Column, Cond) ->
 select_test() ->
   <<"SELECT `id`, `name` FROM `users` WHERE `id` = 23;">>
     = select(users, [id, name], [{id, 23}]).
+
+-spec select(atom(), list(), list(), integer()) -> binary().
+
+select(Table, Column, Cond, Limit) ->
+  L = "SELECT " ++ k_column_list(Column)  ++ from(Table)
+    ++ condition(Cond) ++ limit(Limit) ++";",
+  list_to_binary(L).
+
+select_e_test() ->
+  <<"SELECT `id`, `name` FROM `users` WHERE `id` = 23 LIMIT 3;">>
+    = select(users, [id, name], [{id, 23}], 3).
+
 
 %% 拼接更新语句.
 update(Table, Column, Cond) ->

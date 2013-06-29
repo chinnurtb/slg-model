@@ -42,5 +42,4 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
   ok.
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 清除函数.

@@ -35,7 +35,7 @@ ets_i(EtsTable, Id) ->
 
 load_s(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
-  case Model:select(model:atom_poll(EtsTable, read), UsrId) of
+  case Model:select_n(model:atom_poll(EtsTable, read), UsrId) of
     [] -> {error, not_exist};
     [R]-> K = element(2, R),
           ets:insert(EtsTable, {single, {key, UsrId}, K, get_time()}),
@@ -47,7 +47,7 @@ load_s(EtsTable, UsrId) ->
 
 load_a(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
-  List = Model:select(model:atom_poll(EtsTable, read), UsrId),
+  List = Model:select_n(model:atom_poll(EtsTable, read), UsrId),
   KList = lists:foldl(fun(R, KL) ->
                           ets:insert(EtsTable, R),
                           K = element(2, R),
