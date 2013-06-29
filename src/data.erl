@@ -9,7 +9,7 @@
 
 -type guarder() :: 'reader' | 'writer'.
 
--spec guard_r(atom(), integer()) -> ok | {error, atom()}.
+-spec guard_r(atom(), integer()) -> ok | {error, not_exist}.
 
 %% 用进程字典cache一下状态.
 guard_r(Table, UsrId) ->
@@ -24,7 +24,7 @@ guard_r(Table, UsrId) ->
     true -> ok
   end.
 
--spec guard_w(atom(), integer()) -> ok | {error, atom()}.
+-spec guard_w(atom(), integer()) -> ok | {error, not_exist}.
 
 %% 用进程字典cache一下状态.
 guard_w(Table, UsrId) ->
@@ -68,7 +68,7 @@ guard_f() ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 其他API.
 
--spec lookup_s(atom(), integer()) -> {ok, tuple()} | {error, atom()}.
+-spec lookup_s(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
 
 %% 不管是查看自己或者其他玩家的数据，lookup_s或lookup_a必须先调用.
 lookup_s(Table, UsrId) ->
@@ -77,13 +77,13 @@ lookup_s(Table, UsrId) ->
     ok -> data_ets:find_s(Table, UsrId)
   end.
 
--spec lookup_s_e(atom(), integer(), integer()) -> {ok, term()} | {error, atom()}.
+-spec lookup_s_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
 
 %% 按元素查找.
 lookup_s_e(Table, UsrId, Pos) ->
   data_ets:lookup_s_e(Table, UsrId, Pos).
 
--spec lookup_a(atom(), integer()) -> {ok, list()} | {error, atom()}.
+-spec lookup_a(atom(), integer()) -> {ok, list()} | {error, not_exist}.
 
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
@@ -92,25 +92,25 @@ lookup_a(Table, UsrId) ->
   end.
 
 %% 查找多条数据的某个元素.
--spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, atom()}.
+-spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, not_exist}.
 
 lookup_a_e(Table, UsrId, Pos) ->
   data_ets:lookup_a_e(Table, UsrId, Pos).
 
 %%%%%%%%
 
--spec lookup_i(atom(), integer()) -> {ok, tuple()} | {error, atom()}.
+-spec lookup_i(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
 
 lookup_i(Table, Id) ->
   data_ets:find_i(Table, Id).
 
--spec lookup_i_e(atom(), integer(), integer()) -> {ok, term()} | {error, atom()}.
+-spec lookup_i_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
 
 %% 按元素查找.
 lookup_i_e(Table, Id, Pos) ->
   data_ets:lookup_i_e(Table, Id, Pos).
 
--spec update_s(atom(), integer(), integer()) -> ok | {error, atom()}.
+-spec update_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
 update_s(Table, UsrId, Data) ->
   case data_ets:update_s(Table, UsrId, Data) of
@@ -147,7 +147,7 @@ update_i_e(Table, Id, List) ->
   data_writer:event(Table, upt, {Id, List}),
   ok.
 
--spec delete_s(atom(), integer(), integer()) -> ok | {error, atom()}.
+-spec delete_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
 delete_s(Table, UsrId, Id) ->
   case data_ets:delete_s(Table, UsrId, Id) of
@@ -157,7 +157,7 @@ delete_s(Table, UsrId, Id) ->
     {error, R} -> {error, R}
   end.
 
--spec delete_i(atom(), integer(), integer()) -> ok | {error, atom()}.
+-spec delete_i(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
 delete_i(Table, UsrId, Id) ->
   case data_ets:delete_i(Table, UsrId, Id) of
@@ -167,7 +167,7 @@ delete_i(Table, UsrId, Id) ->
     {error, R} -> {error, R}
   end.
 
--spec delete_i_a(atom(), integer(), list()) -> ok | {error, atom()}.
+-spec delete_i_a(atom(), integer(), list()) -> ok | {error, not_exist}.
 
 %% 删除一个id列表
 delete_i_a(Table, UsrId, IdList) ->
@@ -178,7 +178,7 @@ delete_i_a(Table, UsrId, IdList) ->
     {error, R} -> {error, R}
   end.
 
--spec add_s(atom(), integer(), tuple()) -> ok | {error, atom()}.
+-spec add_s(atom(), integer(), tuple()) -> ok | {error, not_exist}.
 
 add_s(Table, UsrId, Data) ->
   case data_ets:add_s(Table, UsrId, Data) of
@@ -188,7 +188,7 @@ add_s(Table, UsrId, Data) ->
     {error, R} -> {error, R}
   end.
 
--spec add_i(atom(), integer(), tuple()) -> ok | {error, atom()}.
+-spec add_i(atom(), integer(), tuple()) -> ok | {error, not_exist}.
 
 add_i(Table, UsrId, Data) ->
   case data_ets:add_i(Table, UsrId, Data) of
