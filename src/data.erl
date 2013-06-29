@@ -1,9 +1,9 @@
 -module(data).
 -export([lookup_s/2, lookup_a/2, lookup_i/2]).
 -export([guard_f/0]).
--export([update_s/3, update_i/2, delete_i/3, delete_s/3, clear/1]).
+-export([update_s/3, update_i/2, delete_i/3, delete_i_a/3, delete_s/3, clear/1]).
 -export([add_s/3, add_i/3, id/1]).
--export([lookup_s_e/3, lookup_i_e/3, update_s_e/3, update_i_e/3]).
+-export([lookup_s_e/3, lookup_a_e/3, lookup_i_e/3, update_s_e/3, update_i_e/3]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
 
@@ -76,6 +76,9 @@ lookup_a(Table, UsrId) ->
     ok -> data_ets:find_a(Table, UsrId)
   end.
 
+lookup_a_e(Table, UsrId, Pos) ->
+  data_ets:lookup_a_e(Table, UsrId, Pos).
+
 %%%%%%%%
 
 lookup_i(Table, Id) ->
@@ -127,6 +130,15 @@ delete_i(Table, UsrId, Id) ->
     ok ->
       spt_notify:post(slg_m_del_i, {Table, UsrId, Id}),
       data_writer:event(Table, del, Id), ok;
+    {error, R} -> {error, R}
+  end.
+
+%% 删除一个id列表
+delete_i_a(Table, UsrId, IdList) ->
+  case data_ets:delete_i_a(Table, UsrId, IdList) of
+    ok ->
+      spt_notify:post(slg_m_del_i_a, {Table, UsrId, IdList}),
+      data_writer:event(Table, del, {in, IdList}), ok;
     {error, R} -> {error, R}
   end.
 

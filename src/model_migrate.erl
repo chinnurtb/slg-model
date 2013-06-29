@@ -19,53 +19,53 @@ cmd_exec(Cmd) ->
   os:cmd(Cmd).
 
 %% 生成基本的sql执行命令.
-cmd_gen({User, Password, Sql}) when length(Password) == 0 ->
-  MetaCmd = io_lib:format("mysql -u~s -e \"~s ;\" ", [User,  Sql]),
+cmd_gen({HostName, User, Password, Sql}) when length(Password) == 0 ->
+  MetaCmd = io_lib:format("mysql -h~s -u~s -e \"~s ;\" ", [HostName, User,  Sql]),
   lists:flatten(MetaCmd);
-cmd_gen({UserName, Password, Sql}) when length(Password) > 0 ->
-  MetaCmd = io_lib:format("mysql -u~s -p\"~s\" -e \"~s ;\" ",
-                          [UserName, Password, Sql]),
+cmd_gen({HostName, UserName, Password, Sql}) when length(Password) > 0 ->
+  MetaCmd = io_lib:format("mysql -h~s -u~s -p\"~s\" -e \"~s ;\" ",
+                          [HostName, UserName, Password, Sql]),
   lists:flatten(MetaCmd);
-cmd_gen({UserName, DataBase, Password, Sql}) when length(Password) == 0 ->
-  MetaCmd = io_lib:format("mysql -u~s ~s -e \"~s ;\" ",
-                          [UserName, DataBase, Sql]),
+cmd_gen({HostName, UserName, DataBase, Password, Sql}) when length(Password) == 0 ->
+  MetaCmd = io_lib:format("mysql -h~s -u~s ~s -e \"~s ;\" ",
+                          [HostName, UserName, DataBase, Sql]),
   lists:flatten(MetaCmd);
-cmd_gen({UserName, DataBase, Password, Sql}) when length(Password) > 0 ->
-  MetaCmd = io_lib:format("mysql -u~s -p\"~s\" ~s -e \"~s ;\" ",
-                          [UserName, Password, DataBase, Sql]),
+cmd_gen({HostName, UserName, DataBase, Password, Sql}) when length(Password) > 0 ->
+  MetaCmd = io_lib:format("mysql -h~s -u~s -p\"~s\" ~s -e \"~s ;\" ",
+                          [HostName, UserName, Password, DataBase, Sql]),
   lists:flatten(MetaCmd).
 
 %% 建立数据库
-create_db(DataBase, UserName, Password) ->
+create_db(HostName, DataBase, UserName, Password) ->
   Sql = "create database "  ++ DataBase,
-  Cmd = cmd_gen({UserName, Password, Sql}),
+  Cmd = cmd_gen({HostName, UserName, Password, Sql}),
   cmd_exec(Cmd).
 
 %% 删除数据库
-drop_db(DataBase, UserName, Password) ->
+drop_db(HostName, DataBase, UserName, Password) ->
   Sql = "drop database "  ++ DataBase,
-  Cmd = cmd_gen({UserName, Password, Sql}),
+  Cmd = cmd_gen({HostName, UserName, Password, Sql}),
   cmd_exec(Cmd).
 
 %% migrate版本表.
 -define(SCHEMA_TABLE, "`migrate`").
 
 %% 建立migate表
-create_migrate_t(DataBase, UserName, Password) ->
+create_migrate_t(HostName, DataBase, UserName, Password) ->
   Source = "source config/migrate.sql",
-  Cmd = cmd_gen({UserName, DataBase, Password, Source}),
+  Cmd = cmd_gen({HostName, UserName, DataBase, Password, Source}),
   cmd_exec(Cmd).
 
 %%
 create_and_drop_test() ->
-  create_db("nice", "root", ""),
-  create_migrate_t("nice", "root", ""),
-  drop_db("nice", "root", "").
+  create_db("locahost", "nice", "root", ""),
+  create_migrate_t("localhost" ,"nice", "root", ""),
+  drop_db("locahost", "nice", "root", "").
 
 %% source 某个文件.
-source(DataBase, UserName, Password, Path) ->
+source(HostName, DataBase, UserName, Password, Path) ->
   Source = "source " ++ Path,
-  Cmd = cmd_gen({UserName, DataBase, Password, Source}),
+  Cmd = cmd_gen({HostName, UserName, DataBase, Password, Source}),
   cmd_exec(Cmd).
 
 current() ->
@@ -127,10 +127,10 @@ delete(Version) ->
   model:delete_n(migrate, [{version, Version}], migrate).
 
 %% 执行migrate操作
-do(Path, UsrName, Password, Database) ->
-  create_db(Database, UsrName, Password),
-  source(Database, UsrName, Password, Path ++ "/db.sql"),
-  create_migrate_t(Database, UsrName, Password),
+do(Path, HostName, UsrName, Password, Database) ->
+  create_db(HostName, Database, UsrName, Password),
+  source(HostName, Database, UsrName, Password, Path ++ "/db.sql"),
+  create_migrate_t(HostName,Database, UsrName, Password),
   migrate = model:start(#db_conf{poll=migrate, username=UsrName, worker=1,
                                  password=Password, database=Database}),
   Max = max_version(),
@@ -149,9 +149,9 @@ do(Path, UsrName, Password, Database) ->
   ok.
 
 %% 重建数据库
-redo(Path, UsrName, Password, Database) ->
-  drop_db(Database, UsrName, Password),
-  do(Path, UsrName, Password, Database),
+redo(Path, HostName, UsrName, Password, Database) ->
+  drop_db(HostName, Database, UsrName, Password),
+  do(Path, HostName, UsrName, Password, Database),
   ok.
 
 up(Module) ->

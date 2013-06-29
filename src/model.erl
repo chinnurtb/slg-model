@@ -6,9 +6,9 @@
 %%-include("deps/mysql/include/mysql.hrl").
 
 %% 数据库SQL日志记录输出.
-logger(_, _, _Level, _Fun) ->
+logger(_, _, Level, _Fun) ->
   {Str, Val} = _Fun(),
-  io:format(Str ++ "~n", Val),
+  io:format(Str ++"~n", Val),
   pass.
 
 %% 开启一个poll
@@ -234,7 +234,7 @@ module_new(Key) ->
   {ok, M8} = spt_smerl:add_func(M7, InsertFunt),
   {ok, M9} = spt_smerl:add_func(M8, DeleteFunt),
   M10 = spt_smerl:set_exports(M9, [{select,2}, {update,2}, {insert,2}, {delete,2},
-                                    {select,1}, {update,1}, {insert,1}, {delete,1}]),
+                                   {select,1}, {update,1}, {insert,1}, {delete,1}]),
   spt_smerl:compile(M10),
   ok.
 

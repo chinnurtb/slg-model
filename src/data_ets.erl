@@ -9,16 +9,9 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
 
-%% 安全新建ets表
-safe_create(AtomName, Options) ->
-  case ets:info(AtomName) of
-    undefined -> ets:new(AtomName, Options);
-    _Other -> AtomName
-  end.
-
 %% 启动一个ets表.
 new(Table) ->
-  Table = safe_create(Table, [named_table, public, set, {keypos, 2}]).
+  Table = spt_ets:safe_create(Table, [named_table, public, set, {keypos, 2}]).
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 方便ets查找的函数
 
@@ -91,6 +84,14 @@ lookup_a(Table, UsrId) ->
       {ok, L}
   end.
 
+lookup_a_e(Table, UsrId, Pos) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      E = [ets:lookup_element(Table, Id, Pos) || Id <- Ids],
+      {ok, E}
+  end.
+
 lookup_i(Table, Id) ->
   case ets:lookup(Table, Id) of
     [] -> {error, not_exist};
@@ -147,6 +148,19 @@ delete_i(Table, UsrId, Id) ->
       ets:update_element(Table, {key, UsrId}, {3, lists:delete(Id, Ids)}),
       ok
   end.
+
+%% 多条条删除.
+delete_i_a(Table, UsrId, IdList) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _}] ->
+      L2 = lists:foldl(fun(Id, L) -> lists:delete(Id, L)
+                       end, Ids, IdList),
+      ets:update_element(Table, {key, UsrId}, {3, L2}),
+      [ets:delete(Table, Id) || Id <- IdList],
+      ok
+  end.
+
 
 %% 增加一个新条目
 add_i(Table, UsrId, Data) ->
