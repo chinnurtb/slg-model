@@ -9,11 +9,16 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
 
+
+-spec new(atom()) -> atom().
+
 %% 启动一个ets表.
 new(Table) ->
   Table = spt_ets:safe_create(Table, [named_table, public, set, {keypos, 2}]).
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 方便ets查找的函数
+
+-spec ets_i(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
 
 ets_i(EtsTable, Id) ->
   case ets:lookup(EtsTable, Id) of
@@ -26,6 +31,8 @@ ets_i(EtsTable, Id) ->
 %% MySQL对应的ets表全部为set类型，且key_pos为2.
 %% 如果数据不在ets中，加载单条数据到ets，如果在则不加载.
 
+-spec load_s(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
+
 load_s(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
   case Model:select(model:atom_poll(EtsTable, read), UsrId) of
@@ -35,6 +42,8 @@ load_s(EtsTable, UsrId) ->
           ets:insert(EtsTable, R),
           {ok, R}
   end.
+
+-spec load_a(atom(), integer()) -> {ok, list()}.
 
 load_a(EtsTable, UsrId) ->
   Model = model:model(EtsTable),
@@ -50,6 +59,8 @@ load_a(EtsTable, UsrId) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 查询函数接口
 
+-spec lookup_s(atom(), integer()) -> {ok, tuple()}.
+
 %% 通过key查找单条数据.
 lookup_s(Table, UsrId) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -63,6 +74,8 @@ lookup_s(Table, UsrId) ->
       {ok, R}
   end.
 
+-spec lookup_s_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
+
 %% 按pos查找属性，必须要确认数据存在才能用.
 lookup_s_e(Table, UsrId, Pos) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -70,6 +83,8 @@ lookup_s_e(Table, UsrId, Pos) ->
     [{single, {key, UsrId}, Id, _Time}] ->
       {ok, ets:lookup_element(Table, Id, Pos)}
   end.
+
+-spec lookup_a(atom(), integer()) -> {ok, list()} | {error, not_exist}.
 
 %% 通过key查找数组数据
 lookup_a(Table, UsrId) ->
@@ -84,6 +99,8 @@ lookup_a(Table, UsrId) ->
       {ok, L}
   end.
 
+-spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, not_exist}.
+
 lookup_a_e(Table, UsrId, Pos) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
@@ -92,17 +109,22 @@ lookup_a_e(Table, UsrId, Pos) ->
       {ok, E}
   end.
 
+-spec lookup_i(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
+
 lookup_i(Table, Id) ->
   case ets:lookup(Table, Id) of
     [] -> {error, not_exist};
     [R]-> {ok, R}
   end.
 
+-spec lookup_i_e(atom(), integer(), integer()) -> {ok, tuple()}.
+
 %% 按pos查找数据.
 lookup_i_e(Table, Id, Pos) ->
   R = ets:lookup_element(Table, Id, Pos),
   {ok, R}.
 
+-spec update_s(atom(), integer(), tuple()) -> ok | {error, not_exist}.
 
 %% 更新操作
 update_s(Table, UsrId, Data) ->
@@ -113,6 +135,8 @@ update_s(Table, UsrId, Data) ->
       ets:insert(Table, Data), ok
   end.
 
+-spec update_s_e(atom(), integer(), list()) -> {ok, integer()} | {error, not_exist}.
+
 %% 更新部分数据.
 update_s_e(Table, UsrId, List) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -121,14 +145,20 @@ update_s_e(Table, UsrId, List) ->
       ets:update_element(Table, Id, List), {ok, Id}
   end.
 
+-spec update_i(atom(), tuple()) -> ok.
+
 %% 分条更新
 update_i(Table, Data) ->
   ets:insert(Table, Data),
   ok.
 
+-spec update_i_e(atom(), tuple(), list()) -> {ok, integer()}.
+
 update_i_e(Table, Id, List) ->
   ets:update_element(Table, Id, List),
   {ok, Id}.
+
+-spec delete_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
 delete_s(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -139,6 +169,8 @@ delete_s(Table, UsrId, Id) ->
       ok
   end.
 
+-spec delete_i(atom(), integer(), integer()) -> ok | {error, not_exist}.
+
 %% 分条删除，不需要单条删除
 delete_i(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
@@ -148,6 +180,8 @@ delete_i(Table, UsrId, Id) ->
       ets:update_element(Table, {key, UsrId}, {3, lists:delete(Id, Ids)}),
       ok
   end.
+
+-spec delete_i_a(atom(), integer(), list()) -> ok | {error, not_exist}.
 
 %% 多条条删除.
 delete_i_a(Table, UsrId, IdList) ->
@@ -161,6 +195,7 @@ delete_i_a(Table, UsrId, IdList) ->
       ok
   end.
 
+-spec add_i(atom(), integer(), tuple()) -> ok.
 
 %% 增加一个新条目
 add_i(Table, UsrId, Data) ->
@@ -169,6 +204,8 @@ add_i(Table, UsrId, Data) ->
   ets:insert(Table, Data),
   ets:update_element(Table, {key, UsrId}, {3, [Id|Ids]}),
   ok.
+
+-spec add_s(atom(), integer(), tuple()) -> ok | {error, already_exist}.
 
 %% 添加单条
 add_s(Table, UsrId, Data) ->
@@ -182,11 +219,15 @@ add_s(Table, UsrId, Data) ->
       ok
   end.
 
+-spec find_s(atom(), integer()) -> {ok, tuple} | {error, not_exist}.
+
 find_s(Table, UsrId) ->
   case lookup_s(Table, UsrId) of
     {ok, R} -> {ok, R};
     {error, _ } -> load_s(Table, UsrId)
   end.
+
+-spec find_a(atom(), integer()) -> {ok, tuple} | {error, not_exist}.
 
 find_a(Table, UsrId) ->
   case lookup_a(Table, UsrId) of
@@ -194,8 +235,12 @@ find_a(Table, UsrId) ->
     {error, _ } -> load_a(Table, UsrId)
   end.
 
+-spec find_i(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
+
 find_i(Table, Id) ->
   lookup_i(Table, Id).
+
+-spec clear(atom(), integer()) -> true.
 
 %% 清除玩家单元数据.
 clear(Table, UsrId) ->
