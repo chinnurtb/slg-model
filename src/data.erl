@@ -7,6 +7,10 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
 
+-type guarder() :: 'reader' | 'writer'.
+
+-spec guard_r(atom(), integer()) -> ok | {error, atom()}.
+
 %% 用进程字典cache一下状态.
 guard_r(Table, UsrId) ->
   case erlang:get({guard, Table, UsrId}) of
@@ -19,6 +23,8 @@ guard_r(Table, UsrId) ->
       end;
     true -> ok
   end.
+
+-spec guard_w(atom(), integer()) -> ok | {error, atom()}.
 
 %% 用进程字典cache一下状态.
 guard_w(Table, UsrId) ->
@@ -33,6 +39,7 @@ guard_w(Table, UsrId) ->
     true -> ok
   end.
 
+-spec guard_a(atom(), integer(), guarder()) -> ok.
 
 %% 维护一个进程获取的guard列表，进程退出时释放.
 guard_a(Table, UsrId, Role) ->
@@ -42,6 +49,8 @@ guard_a(Table, UsrId, Role) ->
       end,
   erlang:put({guard, list}, [{Table, UsrId, Role}|R]),
   ok.
+
+-spec guard_f() -> ok.
 
 %% 在进程退出时,清除所有的guard.
 guard_f() ->
@@ -59,6 +68,8 @@ guard_f() ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 其他API.
 
+-spec lookup_s(atom(), integer()) -> {ok, tuple()} | {error, atom()}.
+
 %% 不管是查看自己或者其他玩家的数据，lookup_s或lookup_a必须先调用.
 lookup_s(Table, UsrId) ->
   case guard_r(Table, UsrId) of
@@ -66,9 +77,13 @@ lookup_s(Table, UsrId) ->
     ok -> data_ets:find_s(Table, UsrId)
   end.
 
+-spec lookup_s_e(atom(), integer(), integer()) -> {ok, term()} | {error, atom()}.
+
 %% 按元素查找.
 lookup_s_e(Table, UsrId, Pos) ->
   data_ets:lookup_s_e(Table, UsrId, Pos).
+
+-spec lookup_a(atom(), integer()) -> {ok, list()} | {error, atom()}.
 
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
@@ -76,17 +91,26 @@ lookup_a(Table, UsrId) ->
     ok -> data_ets:find_a(Table, UsrId)
   end.
 
+%% 查找多条数据的某个元素.
+-spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, atom()}.
+
 lookup_a_e(Table, UsrId, Pos) ->
   data_ets:lookup_a_e(Table, UsrId, Pos).
 
 %%%%%%%%
 
+-spec lookup_i(atom(), integer()) -> {ok, tuple()} | {error, atom()}.
+
 lookup_i(Table, Id) ->
   data_ets:find_i(Table, Id).
+
+-spec lookup_i_e(atom(), integer(), integer()) -> {ok, term()} | {error, atom()}.
 
 %% 按元素查找.
 lookup_i_e(Table, Id, Pos) ->
   data_ets:lookup_i_e(Table, Id, Pos).
+
+-spec update_s(atom(), integer(), integer()) -> ok | {error, atom()}.
 
 update_s(Table, UsrId, Data) ->
   case data_ets:update_s(Table, UsrId, Data) of
@@ -96,12 +120,16 @@ update_s(Table, UsrId, Data) ->
     {error, R} -> {error, R}
   end.
 
+-spec update_s_e(atom(), atom(), list()) -> ok.
+
 %% 按位置更新.
 update_s_e(Table, UsrId, List) ->
   {ok, Id} = data_ets:update_s_e(Table, UsrId, List),
   spt_notify:post(slg_m_upt_s_e, {Table, UsrId, Id, List}),
   data_writer:event(Table, upt, {Id, List}),
   ok.
+
+-spec update_i(atom(), tuple()) -> ok.
 
 %% 分条更新
 update_i(Table, Data) ->
@@ -110,12 +138,16 @@ update_i(Table, Data) ->
   data_writer:event(Table, upt, Data),
   ok.
 
+-spec update_i_e(atom(), integer(), list()) -> ok.
+
 %% 按位置更新.
 update_i_e(Table, Id, List) ->
   data_ets:update_i_e(Table, Id, List),
   spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
   data_writer:event(Table, upt, {Id, List}),
   ok.
+
+-spec delete_s(atom(), integer(), integer()) -> ok | {error, atom()}.
 
 delete_s(Table, UsrId, Id) ->
   case data_ets:delete_s(Table, UsrId, Id) of
@@ -125,6 +157,8 @@ delete_s(Table, UsrId, Id) ->
     {error, R} -> {error, R}
   end.
 
+-spec delete_i(atom(), integer(), integer()) -> ok | {error, atom()}.
+
 delete_i(Table, UsrId, Id) ->
   case data_ets:delete_i(Table, UsrId, Id) of
     ok ->
@@ -132,6 +166,8 @@ delete_i(Table, UsrId, Id) ->
       data_writer:event(Table, del, Id), ok;
     {error, R} -> {error, R}
   end.
+
+-spec delete_i_a(atom(), integer(), list()) -> ok | {error, atom()}.
 
 %% 删除一个id列表
 delete_i_a(Table, UsrId, IdList) ->
@@ -142,6 +178,8 @@ delete_i_a(Table, UsrId, IdList) ->
     {error, R} -> {error, R}
   end.
 
+-spec add_s(atom(), integer(), tuple()) -> ok | {error, atom()}.
+
 add_s(Table, UsrId, Data) ->
   case data_ets:add_s(Table, UsrId, Data) of
     ok ->
@@ -149,6 +187,8 @@ add_s(Table, UsrId, Data) ->
       data_writer:event(Table, add, Data), ok;
     {error, R} -> {error, R}
   end.
+
+-spec add_i(atom(), integer(), tuple()) -> ok | {error, atom()}.
 
 add_i(Table, UsrId, Data) ->
   case data_ets:add_i(Table, UsrId, Data) of
@@ -167,11 +207,15 @@ clear_fun(Table, UsrId) ->
     {error, _} -> do_nothing
   end.
 
+-spec clear(atom()) -> ok.
+
 %% 对数据进行清除，有可能会失败，不过没关系.
 clear(Table) ->
   All = data_ets:out_time(Table),
   [clear_fun(Table, UsrId) || UsrId <- All],
   ok.
+
+-spec id(atom()) -> integer().
 
 %% 获取id.
 id(Key) -> data_holder:id(Key).
