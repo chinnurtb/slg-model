@@ -227,7 +227,7 @@ find_s(Table, UsrId) ->
     {error, _ } -> load_s(Table, UsrId)
   end.
 
--spec find_a(atom(), integer()) -> {ok, tuple} | {error, not_exist}.
+-spec find_a(atom(), integer()) -> {ok, list()}.
 
 find_a(Table, UsrId) ->
   case lookup_a(Table, UsrId) of

@@ -83,7 +83,7 @@ lookup_s(Table, UsrId) ->
 lookup_s_e(Table, UsrId, Pos) ->
   data_ets:lookup_s_e(Table, UsrId, Pos).
 
--spec lookup_a(atom(), integer()) -> {ok, list()} | {error, not_exist}.
+-spec lookup_a(atom(), integer()) -> {ok, list()}.
 
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
