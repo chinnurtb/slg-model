@@ -99,6 +99,13 @@ lookup_a(Table, UsrId) ->
       {ok, L}
   end.
 
+count_a(Table, UsrId) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      {ok, length(Ids)}
+  end.
+
 -spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, not_exist}.
 
 lookup_a_e(Table, UsrId, Pos) ->

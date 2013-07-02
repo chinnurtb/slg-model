@@ -4,7 +4,7 @@
 -export([update_s/3, update_i/2, delete_i/3, delete_i_a/3, delete_s/3, clear/1]).
 -export([add_s/3, add_i/3, id/1]).
 -export([lookup_s_e/3, lookup_a_e/3, lookup_i_e/3, update_s_e/3, update_i_e/3]).
--export([lookup_i/3, lookup_i_e/4, update_i/3, update_i_e/4]).
+-export([lookup_i/3, lookup_i_e/4, update_i/3, update_i_e/4, count_a/2]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
 
@@ -97,6 +97,11 @@ lookup_a(Table, UsrId) ->
 
 lookup_a_e(Table, UsrId, Pos) ->
   data_ets:lookup_a_e(Table, UsrId, Pos).
+
+-spec count_a(atom(), integer()) -> {ok, integer()} | {error, not_exist}.
+
+count_a(Table, UsrId) ->
+  data_ets:count_a(Table, UsrId).
 
 %%%%%%%%
 
