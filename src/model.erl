@@ -280,7 +280,7 @@ safe_create(AtomName, Options) ->
   end.
 
 init_m() ->
-  safe_create(slg_model_map, [named_table, public, set, {keypos, 2}]).
+  safe_create(slg_model_map, [named_table, public, set, {keypos, 1}]).
 
 %% Key为复数.
 add_m(Key, KeyList, Db) ->
