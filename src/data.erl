@@ -105,6 +105,9 @@ lookup_a_e(Table, UsrId, Pos) ->
 lookup_i(Table, Id) ->
   data_ets:find_i(Table, Id).
 
+
+-spec lookup_i(atom(), integer(), integer()) -> {ok, tuple()} | {error, not_exist} | {error, not_belong_user}.
+
 lookup_i(Table, UsrId, Id) ->
   data_ets:find_i(Table, UsrId, Id).
 
@@ -113,6 +116,9 @@ lookup_i(Table, UsrId, Id) ->
 %% 按元素查找.
 lookup_i_e(Table, Id, Pos) ->
   data_ets:lookup_i_e(Table, Id, Pos).
+
+
+-spec lookup_i_e(atom(), integer(), integer(), integer()) -> {ok, term()} | {error, not_exist} | {error, not_belong_user}.
 
 %% 按元素查找.
 lookup_i_e(Table, UsrId, Id, Pos) ->
@@ -146,6 +152,8 @@ update_i(Table, Data) ->
   spt_notify:post(slg_m_upt_i, {Table, Data}),
   data_writer:event(Table, upt, Data),
   ok.
+
+-spec update_i(atom(), integer(), tuple()) -> ok.
 
 update_i(Table, UsrId, Data) ->
   ok = data_ets:update_i(Table, UsrId, Data),   %% defence
