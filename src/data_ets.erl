@@ -117,12 +117,37 @@ lookup_i(Table, Id) ->
     [R]-> {ok, R}
   end.
 
+-spec lookup_i(atom(), integer(), integer()) -> {ok, tuple()} | {error, not_exist} | {error, not_belong_user}.
+%% 判断Id是否属于UsrId的接口.
+lookup_i(Table, UsrId, Id) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      case lists:member(Id, Ids) of
+        true -> lookup_i(Table, Id);
+        false -> {error, not_belong_user}
+      end
+  end.
+
 -spec lookup_i_e(atom(), integer(), integer()) -> {ok, tuple()}.
 
 %% 按pos查找数据.
 lookup_i_e(Table, Id, Pos) ->
   R = ets:lookup_element(Table, Id, Pos),
   {ok, R}.
+
+-spec lookup_i_e(atom(), integer(), integer(), integer()) -> {ok, tuple()} | {error, not_exist} | {error, not_belong_user}.
+
+%% 判断了Id是否属于UsrId的接口.
+lookup_i_e(Table, UsrId, Id, Pos) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      case lists:member(Id, Ids) of
+        true -> lookup_i_e(Table, Id, Pos);
+        false -> {error, not_belong_user}
+      end
+  end.
 
 -spec update_s(atom(), integer(), tuple()) -> ok | {error, not_exist}.
 
@@ -152,11 +177,38 @@ update_i(Table, Data) ->
   ets:insert(Table, Data),
   ok.
 
--spec update_i_e(atom(), tuple(), list()) -> {ok, integer()}.
+-spec update_i(atom(), integer(), tuple()) -> ok.
+%% 加入了判断是否属于user的接口
+update_i(Table, UsrId, Data) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      Id = element(2, Data),
+      case lists:member(Id, Ids) of
+        true -> update_i(Table, Data);
+        false -> {error, not_belong_user}
+      end
+  end.
+
+
+-spec update_i_e(atom(), tuple(), list()) -> {ok, integer()} | {error, not_exist}.
 
 update_i_e(Table, Id, List) ->
   ets:update_element(Table, Id, List),
-  {ok, Id}.
+  ok.
+
+-spec update_i_e(atom(), integer(), tuple(), list()) -> {ok, integer()} | {error, not_exist} | {error, not_belong_user}.
+
+%% 判断了id是否等于userid的接口
+update_i_e(Table, UsrId, Id, List) ->
+  case ets:lookup(Table, {key, UsrId}) of
+    [] -> {error, not_exist};
+    [{array, {key, UsrId}, Ids, _Time}] ->
+      case lists:member(Id, Ids) of
+        true -> update_i_e(Table, Id, List);
+        false -> {error, not_belong_user}
+      end
+  end.
 
 -spec delete_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
@@ -176,9 +228,12 @@ delete_i(Table, UsrId, Id) ->
   case ets:lookup(Table, {key, UsrId}) of
     [] -> {error, not_exist};
     [{array, {key, UsrId}, Ids, _}] ->
-      ets:delete(Table, Id),
-      ets:update_element(Table, {key, UsrId}, {3, lists:delete(Id, Ids)}),
-      ok
+      case lists:member(Id, Ids) of
+        false -> {error, not_belong_user};
+        true  ->
+          ets:delete(Table, Id),
+          ets:update_element(Table, {key, UsrId}, {3, lists:delete(Id, Ids)}), ok
+        end
   end.
 
 -spec delete_i_a(atom(), integer(), list()) -> ok | {error, not_exist}.
@@ -239,6 +294,11 @@ find_a(Table, UsrId) ->
 
 find_i(Table, Id) ->
   lookup_i(Table, Id).
+
+-spec find_i(atom(), integer(), integer()) -> {ok, tuple()} | {error, not_exist} | {error, not_belong_user}.
+
+find_i(Table, UserId, Id) ->
+  lookup_i(Table, UserId, Id).
 
 -spec clear(atom(), integer()) -> true.
 

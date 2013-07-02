@@ -4,6 +4,7 @@
 -export([update_s/3, update_i/2, delete_i/3, delete_i_a/3, delete_s/3, clear/1]).
 -export([add_s/3, add_i/3, id/1]).
 -export([lookup_s_e/3, lookup_a_e/3, lookup_i_e/3, update_s_e/3, update_i_e/3]).
+-export([lookup_i/3, lookup_i_e/4, update_i/3, update_i_e/4]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 互斥访问
 
@@ -104,11 +105,19 @@ lookup_a_e(Table, UsrId, Pos) ->
 lookup_i(Table, Id) ->
   data_ets:find_i(Table, Id).
 
+lookup_i(Table, UsrId, Id) ->
+  data_ets:find_i(Table, UsrId, Id).
+
 -spec lookup_i_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
 
 %% 按元素查找.
 lookup_i_e(Table, Id, Pos) ->
   data_ets:lookup_i_e(Table, Id, Pos).
+
+%% 按元素查找.
+lookup_i_e(Table, UsrId, Id, Pos) ->
+  data_ets:lookup_i_e(Table, UsrId, Id, Pos).
+
 
 -spec update_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
 
@@ -138,11 +147,23 @@ update_i(Table, Data) ->
   data_writer:event(Table, upt, Data),
   ok.
 
+update_i(Table, UsrId, Data) ->
+  ok = data_ets:update_i(Table, UsrId, Data),   %% defence
+  spt_notify:post(slg_m_upt_i, {Table, Data}),
+  data_writer:event(Table, upt, Data),
+  ok.
+
 -spec update_i_e(atom(), integer(), list()) -> ok.
 
 %% 按位置更新.
 update_i_e(Table, Id, List) ->
   data_ets:update_i_e(Table, Id, List),
+  spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
+  data_writer:event(Table, upt, {Id, List}),
+  ok.
+
+update_i_e(Table, UsrId, Id, List) ->
+  ok = data_ets:update_i_e(Table, UsrId, Id, List),
   spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
   data_writer:event(Table, upt, {Id, List}),
   ok.
