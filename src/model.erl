@@ -5,10 +5,18 @@
 -include_lib("eunit/include/eunit.hrl").
 %%-include("deps/mysql/include/mysql.hrl").
 
+format("fetch ~p (id ~p)", [D|_]) ->
+  io:format("SQL<< ~s~n", [D]);
+format(Str, Val) ->
+  io:format(Str ++ "~n", Val).
+
 %% 数据库SQL日志记录输出.
 logger(_, _, _Level, _Fun) ->
   {Str, Val} = _Fun(),
-  io:format(Str ++"~n", Val),
+  format(Str, Val),
+  %% io:format("str ~p~n", [Str]),
+  %% R = io_lib:format(Str, Val),
+  %% io:format("sql: ~s~n", [R]),
   pass.
 
 %% 开启一个poll
