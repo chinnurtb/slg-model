@@ -11,7 +11,6 @@
 -type guarder() :: 'reader' | 'writer'.
 
 -spec guard_r(atom(), integer()) -> ok | {error, not_exist}.
-
 %% 用进程字典cache一下状态.
 guard_r(Table, UsrId) ->
   case erlang:get({guard, Table, UsrId}) of
@@ -26,7 +25,6 @@ guard_r(Table, UsrId) ->
   end.
 
 -spec guard_w(atom(), integer()) -> ok | {error, not_exist}.
-
 %% 用进程字典cache一下状态.
 guard_w(Table, UsrId) ->
   case erlang:get({guard, Table, UsrId}) of
@@ -41,7 +39,6 @@ guard_w(Table, UsrId) ->
   end.
 
 -spec guard_a(atom(), integer(), guarder()) -> ok.
-
 %% 维护一个进程获取的guard列表，进程退出时释放.
 guard_a(Table, UsrId, Role) ->
   R = case erlang:get({guard, list}) of
@@ -52,7 +49,6 @@ guard_a(Table, UsrId, Role) ->
   ok.
 
 -spec guard_f() -> ok.
-
 %% 在进程退出时,清除所有的guard.
 guard_f() ->
   R = case erlang:get({guard, list}) of undefined -> []; R1 -> R1 end,
@@ -68,89 +64,97 @@ guard_f() ->
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 其他API.
-
 -spec lookup_s(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
-
 %% 不管是查看自己或者其他玩家的数据，lookup_s或lookup_a必须先调用.
 lookup_s(Table, UsrId) ->
   case guard_r(Table, UsrId) of
     {error, _} -> lookup_s(Table, UsrId);   %% 递归下去，直到成功.
-    ok -> data_ets:find_s(Table, UsrId)
+    ok -> data_ets:lookup_s(Table, UsrId)
   end.
 
 -spec lookup_s_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
-
 %% 按元素查找.
 lookup_s_e(Table, UsrId, Pos) ->
-  data_ets:lookup_s_e(Table, UsrId, Pos).
+  case guard_r(Table, UsrId) of
+    {error, _} -> lookup_s_e(Table, UsrId, Pos);   %% 递归下去，直到成功.
+    ok -> data_ets:lookup_s_e(Table, UsrId, Pos)
+  end.
 
 -spec lookup_a(atom(), integer()) -> {ok, list()}.
-
 lookup_a(Table, UsrId) ->
   case guard_r(Table, UsrId) of
     {error, _} -> lookup_a(Table, UsrId);   %% 递归下去，直到成功.
-    ok -> data_ets:find_a(Table, UsrId)
+    ok -> data_ets:lookup_a(Table, UsrId)
   end.
 
 %% 查找多条数据的某个元素.
 -spec lookup_a_e(atom(), integer(), integer()) -> {ok, list()} | {error, not_exist}.
-
 lookup_a_e(Table, UsrId, Pos) ->
-  data_ets:lookup_a_e(Table, UsrId, Pos).
+  case guard_r(Table, UsrId) of
+    {error, _} -> lookup_a_e(Table, UsrId, Pos);
+    ok -> data_ets:lookup_a_e(Table, UsrId, Pos)
+  end.
 
 -spec count_a(atom(), integer()) -> {ok, integer()} | {error, not_exist}.
-
 count_a(Table, UsrId) ->
-  data_ets:count_a(Table, UsrId).
+  case guard_r(Table, UsrId) of
+    {error, _} -> count_a(Table, UsrId);
+    ok -> data_ets:count_a(Table, UsrId)
+  end.
 
 %%%%%%%%
 
 -spec lookup_i(atom(), integer()) -> {ok, tuple()} | {error, not_exist}.
-
 lookup_i(Table, Id) ->
-  data_ets:find_i(Table, Id).
+  data_ets:lookup_i(Table, Id).
 
 
--spec lookup_i(atom(), integer(), integer()) -> {ok, tuple()} | {error, not_exist} | {error, not_belong_user}.
-
+-spec lookup_i(atom(), integer(), integer()) -> {ok, tuple()} | {error, not_exist}
+                                                  | {error, not_belong_user}.
 lookup_i(Table, UsrId, Id) ->
-  data_ets:find_i(Table, UsrId, Id).
+  case guard_r(Table, UsrId) of
+    {error, _} -> lookup_i(Table, UsrId, Id);
+    ok -> data_ets:lookup_i(Table, UsrId, Id)
+  end.
 
 -spec lookup_i_e(atom(), integer(), integer()) -> {ok, term()} | {error, not_exist}.
-
 %% 按元素查找.
 lookup_i_e(Table, Id, Pos) ->
   data_ets:lookup_i_e(Table, Id, Pos).
 
-
--spec lookup_i_e(atom(), integer(), integer(), integer()) -> {ok, term()} | {error, not_exist} | {error, not_belong_user}.
-
+-spec lookup_i_e(atom(), integer(), integer(), integer()) -> {ok, term()} |
+                                                             {error, not_exist} |
+                                                             {error, not_belong_user}.
 %% 按元素查找.
 lookup_i_e(Table, UsrId, Id, Pos) ->
-  data_ets:lookup_i_e(Table, UsrId, Id, Pos).
-
+  case guard_r(Table, UsrId) of
+    {error, _} -> lookup_i_e(Table, UsrId, Id, Pos);
+    ok -> data_ets:lookup_i_e(Table, UsrId, Id, Pos)
+  end.
 
 -spec update_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
-
 update_s(Table, UsrId, Data) ->
-  case data_ets:update_s(Table, UsrId, Data) of
-    ok ->
-      spt_notify:post(slg_m_upt_s, {Table, UsrId, Data}),
-      data_writer:event(Table, upt, Data), ok;
-    {error, R} -> {error, R}
+  case guard_r(Table, UsrId) of
+    {error, _} -> update_s(Table, UsrId, Data);
+    ok -> case data_ets:update_s(Table, UsrId, Data) of
+            ok -> spt_notify:post(slg_m_upt_s, {Table, UsrId, Data}),
+                  data_writer:event(Table, upt, Data), ok;
+            {error, R} -> {error, R}
+          end
   end.
 
 -spec update_s_e(atom(), atom(), list()) -> ok.
-
 %% 按位置更新.
 update_s_e(Table, UsrId, List) ->
-  {ok, Id} = data_ets:update_s_e(Table, UsrId, List),
-  spt_notify:post(slg_m_upt_s_e, {Table, UsrId, Id, List}),
-  data_writer:event(Table, upt, {Id, List}),
-  ok.
+  case guard_r(Table, UsrId) of
+    {error, _} -> update_s_e(Table, UsrId, List);
+    ok -> {ok, Id} = data_ets:update_s_e(Table, UsrId, List),
+          spt_notify:post(slg_m_upt_s_e, {Table, UsrId, Id, List}),
+          data_writer:event(Table, upt, {Id, List}),
+          ok
+  end.
 
 -spec update_i(atom(), tuple()) -> ok.
-
 %% 分条更新
 update_i(Table, Data) ->
   data_ets:update_i(Table, Data),
@@ -159,16 +163,17 @@ update_i(Table, Data) ->
   ok.
 
 -spec update_i(atom(), integer(), tuple()) -> ok.
-
 update_i(Table, UsrId, Data) ->
-  ok = data_ets:update_i(Table, UsrId, Data),   %% defence
-  spt_notify:post(slg_m_upt_i, {Table, Data}),
-  data_writer:event(Table, upt, Data),
-  ok.
+  case guard_r(Table, UsrId) of
+    {error, _ } -> update_i(Table, UsrId, Data);
+    ok -> ok = data_ets:update_i(Table, UsrId, Data),   %% defence
+          spt_notify:post(slg_m_upt_i, {Table, Data}),
+          data_writer:event(Table, upt, Data),
+          ok
+  end.
 
 -spec update_i_e(atom(), integer(), list()) -> ok.
-
-%% 按位置更新.
+%% 按位置更新. deprecated
 update_i_e(Table, Id, List) ->
   data_ets:update_i_e(Table, Id, List),
   spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
@@ -176,60 +181,79 @@ update_i_e(Table, Id, List) ->
   ok.
 
 update_i_e(Table, UsrId, Id, List) ->
-  ok = data_ets:update_i_e(Table, UsrId, Id, List),
-  spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
-  data_writer:event(Table, upt, {Id, List}),
-  ok.
+  case guard_r(Table, UsrId) of
+    {error, _ } -> update_i_e(Table, UsrId, Id, List);
+    ok ->
+      ok = data_ets:update_i_e(Table, UsrId, Id, List),
+      spt_notify:post(slg_m_upt_i_e, {Table, Id, List}),
+      data_writer:event(Table, upt, {Id, List}),
+      ok
+  end.
 
 -spec delete_s(atom(), integer(), integer()) -> ok | {error, not_exist}.
-
 delete_s(Table, UsrId, Id) ->
-  case data_ets:delete_s(Table, UsrId, Id) of
-    ok ->
-      spt_notify:post(slg_m_del_s, {Table, UsrId, Id}),
-      data_writer:event(Table, del, Id), ok;
-    {error, R} -> {error, R}
+  case guard_r(Table, UsrId) of
+    {error, _} -> delete_s(Table, UsrId, Id);
+    ok -> case data_ets:delete_s(Table, UsrId, Id) of
+            ok ->
+              spt_notify:post(slg_m_del_s, {Table, UsrId, Id}),
+              data_writer:event(Table, del, Id), ok;
+            {error, R} -> {error, R}
+          end
   end.
 
 -spec delete_i(atom(), integer(), integer()) -> ok | {error, not_exist}.
-
 delete_i(Table, UsrId, Id) ->
-  case data_ets:delete_i(Table, UsrId, Id) of
+  case guard_r(Table, UsrId) of
+    {error, _} -> delete_i(Table, UsrId, Id);
     ok ->
-      spt_notify:post(slg_m_del_i, {Table, UsrId, Id}),
-      data_writer:event(Table, del, Id), ok;
-    {error, R} -> {error, R}
+      case data_ets:delete_i(Table, UsrId, Id) of
+        ok ->
+          spt_notify:post(slg_m_del_i, {Table, UsrId, Id}),
+          data_writer:event(Table, del, Id), ok;
+        {error, R} -> {error, R}
+      end
   end.
 
--spec delete_i_a(atom(), integer(), list()) -> ok | {error, not_exist}.
 
+-spec delete_i_a(atom(), integer(), list()) -> ok | {error, not_exist}.
 %% 删除一个id列表
 delete_i_a(Table, UsrId, IdList) ->
-  case data_ets:delete_i_a(Table, UsrId, IdList) of
+  case guard_r(Table, UsrId) of
+    {error, _} -> delete_i_a(Table, UsrId, IdList);
     ok ->
-      spt_notify:post(slg_m_del_i_a, {Table, UsrId, IdList}),
-      data_writer:event(Table, del, {in, IdList}), ok;
-    {error, R} -> {error, R}
+      case data_ets:delete_i_a(Table, UsrId, IdList) of
+        ok ->
+          spt_notify:post(slg_m_del_i_a, {Table, UsrId, IdList}),
+          data_writer:event(Table, del, {in, IdList}), ok;
+        {error, R} -> {error, R}
+      end
   end.
 
 -spec add_s(atom(), integer(), tuple()) -> ok | {error, not_exist}.
-
 add_s(Table, UsrId, Data) ->
-  case data_ets:add_s(Table, UsrId, Data) of
+  case guard_r(Table, UsrId) of
+    {error, _} -> add_s(Table, UsrId, Data);
     ok ->
-      spt_notify:post(slg_m_add_s, {Table, UsrId, Data}),
-      data_writer:event(Table, add, Data), ok;
-    {error, R} -> {error, R}
+      case data_ets:add_s(Table, UsrId, Data) of
+        ok ->
+          spt_notify:post(slg_m_add_s, {Table, UsrId, Data}),
+          data_writer:event(Table, add, Data), ok;
+        {error, R} -> {error, R}
+      end
   end.
 
 -spec add_i(atom(), integer(), tuple()) -> ok | {error, not_exist}.
-
 add_i(Table, UsrId, Data) ->
-  case data_ets:add_i(Table, UsrId, Data) of
+  case guard_r(Table, UsrId) of
+    {error, _} -> add_i(Table, UsrId, Data);
     ok ->
-      spt_notify:post(slg_m_add_i, {Table, UsrId, Data}),
-      data_writer:event(Table, add, Data), ok;
-    {error, R} -> {error, R}
+      case data_ets:add_i(Table, UsrId, Data) of
+        ok ->
+          spt_notify:post(slg_m_add_i, {Table, UsrId, Data}),
+          data_writer:event(Table, add, Data), ok;
+        {error, R} -> {error, R}
+      end
   end.
 
 clear_fun(Table, UsrId) ->
