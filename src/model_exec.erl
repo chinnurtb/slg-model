@@ -6,12 +6,14 @@
 
 %% 统一的超时处理
 exec(Poll, SQL) ->
+  io:format("SQL >> ~p~n", [SQL]),
   case catch mysql:fetch(Poll, SQL) of
     {'EXIT', _} -> io:format("exit 2 ~n"), error;
     {timeout, _}-> io:format("timeout 2 ~n"), error;
     _Other -> _Other
   end.
 exec(SQL) ->
+  io:format("SQL >> ~p~n", [SQL]),
   case catch mysql:fetch(SQL) of
     {'EXIT', _} -> io:format("exit 2 ~n"), error;
     {timeout, _}-> io:format("timeout 2 ~n"), error;

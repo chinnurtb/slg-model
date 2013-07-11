@@ -5,6 +5,7 @@
 -include_lib("eunit/include/eunit.hrl").
 %%-include("deps/mysql/include/mysql.hrl").
 
+format(Pid, _) when is_pid(Pid) -> ok;
 format("fetch ~p (id ~p)", [D|_]) ->
   io:format("SQL<< ~s~n", [D]);
 format(Str, Val) ->
@@ -12,8 +13,10 @@ format(Str, Val) ->
 
 %% 数据库SQL日志记录输出.
 logger(_, _, _Level, _Fun) ->
-  {Str, Val} = _Fun(),
-  format(Str, Val),
+  %% {Str, Val} = _Fun(),
+  %% io:format("str ~p~n", [Str]),
+  %% io:format("val ~p~n", [Val]),
+  %% format(Str, Val),
   %% io:format("str ~p~n", [Str]),
   %% R = io_lib:format(Str, Val),
   %% io:format("sql: ~s~n", [R]),
