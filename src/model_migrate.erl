@@ -132,6 +132,7 @@ do(Path, HostName, UsrName, Password, Database) ->
   source(HostName, Database, UsrName, Password, Path ++ "/db.sql"),
   create_migrate_t(HostName,Database, UsrName, Password),
   migrate = model:start(#db_conf{poll=migrate, username=UsrName, worker=1,
+                                 host=HostName,
                                  password=Password, database=Database}),
   Max = max_version(),
   io:format("max ~p~n", [Max]),
