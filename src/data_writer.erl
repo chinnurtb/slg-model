@@ -27,11 +27,10 @@ handle_cast(stop, State) ->
 handle_cast({event, Table, Event, Db}, State) ->
   io:format("* event ~p ~p ~n", [Event, Db]),
   Model = model:model(Table),
-  Poll = model:atom_poll(Table, write),
   case Event of
-    add -> Model:insert_n(Poll, Db);
-    upt -> Model:update_n(Poll, Db);
-    del -> Model:delete_n(Poll, Db)
+    add -> Model:insert_n(Db);
+    upt -> Model:update_n(Db);
+    del -> Model:delete_n(Db)
   end,
   {noreply, State};
 handle_cast(_, State) ->

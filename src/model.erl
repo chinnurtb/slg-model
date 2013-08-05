@@ -7,7 +7,7 @@
 
 format(Pid, _) when is_pid(Pid) -> ok;
 format("fetch ~p (id ~p)", [D|_]) ->
-  io:format("SQL<< ~s~n", [D]);
+  io:format("SQL~s~n", [D]);
 format(Str, Val) ->
   io:format(Str ++ "~n", Val).
 
@@ -210,29 +210,29 @@ module_new(Key) ->
   Table = Key,
 
   SelectFun01 = io_lib:format("
-     select_n(Poll, Cond, Limit) ->
-     model:select_n(Poll, ~p, ~p, all, Cond, Limit).",
+     select_n(Cond, Limit) ->
+     model:select_n(model_config:poll(), ~p, ~p, all, Cond, Limit).",
                               [DbAtom, Table]),
   SelectFun0 = lists:flatten(SelectFun01),
   %% 普通查询函数.
   SelectFun1 = io_lib:format("
-     select_n(Poll, Cond) when is_list(Cond) ->
-     model:select_n(Poll, ~p, ~p, all, Cond);
-     select_n(Poll, UserId) when is_integer(UserId) ->
-     model:select_n(Poll, ~p, ~p, all, [{user_id, UserId}]).",
+     select_n(Cond) when is_list(Cond) ->
+     model:select_n(model_config:poll(), ~p, ~p, all, Cond);
+     select_n(UserId) when is_integer(UserId) ->
+     model:select_n(model_config:poll(), ~p, ~p, all, [{user_id, UserId}]).",
                              [DbAtom, Table, DbAtom, Table]),
   SelectFun = lists:flatten(SelectFun1),
-  UpdateFun1 = io_lib:format("update_n(Poll, {Id, List}) ->
+  UpdateFun1 = io_lib:format("update_n({Id, List}) ->
              List1 = model:pos_attr(model_record:m(~p), List),
-             model:update_n(Poll, Id, ~p, List1);
-            update_n(Poll, Db) ->
-     model:update_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
+             model:update_n(model_config:poll(), Id, ~p, List1);
+            update_n(Db) ->
+     model:update_n(model_config:poll(), model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFun = lists:flatten(UpdateFun1),
-  InsertFun1 = io_lib:format("insert_n(Poll, Db) ->
-     model:insert_n(Poll, model_record:m(~p), ~p, Db).", [Key, Table]),
+  InsertFun1 = io_lib:format("insert_n(Db) ->
+     model:insert_n(model_config:poll(), model_record:m(~p), ~p, Db).", [Key, Table]),
   InsertFun = lists:flatten(InsertFun1),
-  DeleteFun1 = io_lib:format("delete_n(Poll, ID)  ->
-     model:delete_n(Poll, ID, ~p).
+  DeleteFun1 = io_lib:format("delete_n(ID)  ->
+     model:delete_n(model_config:poll(), ID, ~p).
    ", [Table]),
   DeleteFun = lists:flatten(DeleteFun1),
   {ok, M1} = spt_smerl:add_func(M0, SelectFun0),
@@ -268,16 +268,17 @@ module_new(Key) ->
   {ok, M8} = spt_smerl:add_func(M7, InsertFunt),
   {ok, M9} = spt_smerl:add_func(M8, DeleteFunt),
   {ok, M10} = spt_smerl:add_func(M9, SelectFunt0),
-  M11 = spt_smerl:set_exports(M10, [{select_n,2}, {update_n,2},
-                                    {insert_n,2}, {delete_n,2},
+  M11 = spt_smerl:set_exports(M10, [{select_n,1}, {update_n,1},
+                                    {insert_n,1}, {delete_n,1},
                                     {select_t,1}, {update_t,1},
                                     {insert_t,1}, {delete_t,1},
-                                    {select_n,3}, {select_t, 2}
+                                    {select_n,2}, {select_t, 2}
                                    ]),
   spt_smerl:compile(M11),
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 生成映射表.
+
 
 %% 映射表是一个动态模块，该模块用来做model-key 到起对应的record的属性列表
 %% record_info(fields,x)
@@ -295,7 +296,11 @@ init_m() ->
 
 %% Key为复数.
 add_m(Key, KeyList, Db) ->
-  ets:insert(slg_model_map, {Key, KeyList, Db}).
+  add_m(Key, KeyList, Db, []).
+
+%% 新的add_m函数，可以对表格进行详细配置.
+add_m(Key, KeyList, Db, Opts) ->
+  ets:insert(slg_model_map, {Key, KeyList, Db, Opts}).
 
 sid_g() ->
   case catch model_config:sid() of
@@ -303,36 +308,51 @@ sid_g() ->
     _ -> -1
   end.
 
-sid_s(SID) ->
+sid_s(Dbc, Opts) ->
+  SID = spt_atom:opt(s_id, Opts, 1),
+  Worker = spt_atom:opt(worker, Opts, 31),
   M1 = spt_smerl:new(model_config),
   {ok, M2} = spt_smerl:add_func(M1, "sid() -> " ++ integer_to_list(SID) ++ "."),
-  M3 = spt_smerl:set_exports(M2, [{sid, 0}]),
-  spt_smerl:compile(M3).
+  {ok, M3} = spt_smerl:add_func(M2, "worker() -> " ++ integer_to_list(Worker) ++ "."),
+  {ok, M4} = spt_smerl:add_func(M3, "poll() -> p" ++ integer_to_list(Worker) ++ "_poll."),
+  {ok, M5} = spt_smerl:add_func(M4, "dbc() -> " ++ spt_atom:term_to_string(Dbc) ++ "."),
+  M6 = spt_smerl:set_exports(M5, [{sid, 0}, {worker, 0}, {poll, 0}, {dbc, 0}]),
+  spt_smerl:compile(M6).
 
 %% 生成动态record映射.
 gen_m() ->
   All = ets:tab2list(slg_model_map),
   M0 = spt_smerl:new(model_record),
-  DFun = fun({K, L, _}, F_0) ->
+  DFun = fun({K, L, _Dbc, _Opts}, F_0) ->
              F_0 ++ lists:flatten(io_lib:format("m(~p) -> ~p;", [K, L]))
          end,
   Fun = lists:foldl(DFun, "", All),
   Fun1 = Fun ++ "m(_) -> throw(map_error).",
-  %% io:format("~p", [Fun1]),
   {ok, M1} = spt_smerl:add_func(M0, Fun1),
   M2 = spt_smerl:set_exports(M1, [{m, 1}]),
-  spt_smerl:compile(M2),
+  ok = spt_smerl:compile(M2),
+  gen_p(),
   gen_h(),
+  ok.
+
+%% 创建连接池.
+gen_p() ->
+  Poll = model_config:poll(),
+  Worker = model_config:worker(),
+  Dbc = model_config:dbc(),
+  model:start(Dbc#db_conf{poll=Poll, worker=Worker}),
   ok.
 
 %% 生成模块管理函数.
 gen_h() ->
   All = ets:tab2list(slg_model_map),
-  lists:foreach(fun({K, _, Db}) ->
-                    {ok, _} = data_holder_super:start_holder(Db, K)
+  lists:foreach(fun({K, _, Db, Opts}) ->
+                    model:module_new(K),
+                    {ok, _} = data_holder_super:start_holder(Db, K, Opts)
                 end,
                 All),
   ok.
 
-trans(Poll, Fun) ->
+trans(Fun) ->
+  Poll = model_config:poll(),
   mysql:transaction(Poll, Fun).

@@ -6,9 +6,12 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("model.hrl").
 
-start_link(DataBase, Key) ->
+%%
+%% 将默认使用一个大的连接池，除非显示的指定其为self.
+%%
+start_link(DataBase, Key, Opts) ->
   Atom = model:atom(holder, Key),
-  gen_server:start_link({local, Atom}, ?MODULE, [DataBase, Key], []).
+  gen_server:start_link({local, Atom}, ?MODULE, [DataBase, Key, Opts], []).
 
 id(Key) ->
   Atom = model:atom(holder, Key),
@@ -22,12 +25,11 @@ stop(Key) ->
 max_id(Poll, Table) ->
   model:max_id(Poll, Table).
 
-init([Dbc, Key]) ->
+init([Dbc, Key, _Opts]) ->
   data_ets:new(Key),
-  model:module_new(Key),
   %% model:start(Dbc#db_conf{poll=model:atom_poll(Key, read), worker=3}),
-  model:start(Dbc#db_conf{poll=model:atom_poll(Key, write), worker=1}),
-  MaxId = max_id(model:atom_poll(Key, write), Key),
+  %% model:start(Dbc#db_conf{poll=model:atom_poll(Key, write), worker=1}),
+  MaxId = max_id(model_config:poll(), Key),
   data_guard_super:start_guard(Key),
   data_writer_super:start_writer(Key),
   data_clear_super:start_clear(Key),
@@ -39,11 +41,10 @@ handle_cast(_, State) ->
   {noreply, State}.
 
 handle_call(id, _From, {Key, MaxID, Dbc}) ->
-  Base = Dbc#db_conf.base,
   %% id策略还没考虑进来
-  OID = MaxID div Base,
-  SID = MaxID rem Base,
-  MaxID1 = (OID+1) * Base + SID,
+  OID = MaxID div 1000,
+  SID = model_config:sid(),
+  MaxID1 = (OID+1) * 1000 + SID,
   {reply, MaxID1, {Key, MaxID1, Dbc}};
 
 handle_call(_Msg, _From, State) ->

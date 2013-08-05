@@ -6,14 +6,14 @@
 -behaviour(supervisor).
 
 %% API
--export([init/1, start_holder/2, start_link/0, stop/0]).
+-export([init/1, start_holder/3, start_link/0, stop/0]).
 
 -define(MAX_RESTART, 5000000).
 -define(MAX_TIME, 60).
 
 %% 开启一个连接服务进程.
-start_holder(Db, Key) ->
-  supervisor:start_child(?MODULE, [Db, Key]).
+start_holder(Db, Key, Opts) ->
+  supervisor:start_child(?MODULE, [Db, Key, Opts]).
 
 start_link() ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, []).
