@@ -6,17 +6,19 @@
 
 %% 统一的超时处理
 exec(Poll, SQL) ->
-  io:format("SQL ~p~n", [SQL]),
+  %% io:format("SQL ~p~n", [SQL]),
   case catch mysql:fetch(Poll, SQL) of
-    {'EXIT', _} -> io:format("exit 2 ~n"), error;
-    {timeout, _}-> io:format("timeout 2 ~n"), error;
+    {'EXIT', _} -> error_logger:warning_msg("SQL exit ~p", [SQL]), exit;
+    {timeout, _}-> error_logger:warning_msg("SQL timeout ~p", [SQL]), timeout;
+    {error, R} -> error_logger:warning_msg("SQL error ~p r ~p", [SQL, R]), error;
     _Other -> _Other
   end.
 exec(SQL) ->
-  io:format("SQL ~p~n", [SQL]),
+  %% io:format("SQL ~p~n", [SQL]),
   case catch mysql:fetch(SQL) of
-    {'EXIT', _} -> io:format("exit 2 ~n"), error;
-    {timeout, _}-> io:format("timeout 2 ~n"), error;
+    {'EXIT', _} -> error_logger:warning_msg("SQL exit ~p", [SQL]), exit;
+    {timeout, _}-> error_logger:warning_msg("SQL timeout ~p", [SQL]), timeout;
+    {error, R} -> error_logger:warning_msg("SQL error ~p r ~p", [SQL, R]), error;
     _Other -> _Other
   end.
 
@@ -54,18 +56,17 @@ delete_t(SQL) ->
 
 delete_n(Poll, SQL) ->
   R = exec(Poll, SQL),
-  %% io:format("del ~p R:~p~n", [SQL, R]),
   {updated, _Result} = R,
   ok.
 
 insert_t(SQL) ->
   case mysql:fetch(SQL) of
     {updated, _Result} -> ok;
-    {error, _Result} -> error
+    error -> error
   end.
 
 insert_n(Poll, SQL) ->
   case exec(Poll, SQL) of
     {updated, _Result} -> ok;
-    {error, _Result} -> error
+    error -> error
   end.

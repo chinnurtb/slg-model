@@ -26,8 +26,8 @@ logger(_, _, _Level, _Fun) ->
 start(DbsConf) ->
   #db_conf{poll=Poll, host=HostName, port=Port, username=UserName,
            password=Password, database=DataBase, worker=Worker} = DbsConf,
-  mysql:start_link(Poll, HostName, Port, UserName, Password, DataBase, fun logger/4),
-  [mysql:connect(Poll, HostName, undefined, UserName, Password, DataBase, true) ||
+  mysql:start_link(Poll, HostName, Port, UserName, Password, DataBase, fun logger/4, utf8),
+  [mysql:connect(Poll, HostName, undefined, UserName, Password, DataBase, utf8, true) ||
     _ <- lists:seq(1, Worker)],
   Poll.
 
