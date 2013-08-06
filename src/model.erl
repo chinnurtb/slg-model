@@ -161,13 +161,6 @@ delete_t(Id, Table) ->
   model_exec:delete_t(SQL),
   ok.
 
-%% insert_delete_test() ->
-%%   Poll = start(#db_conf{username="root", password="", database="slg_model"}),
-%%   delete_n(Poll, {in, [23]}, buildings),
-%%   delete_n(Poll, [{user_id, 2001}], buildings),
-%%   insert_n(Poll, [{id, 23}, {type, <<"gog">>}, {level, 23}], buildings),
-%%   ok.
-
 max(Column, Table) ->
   L = model_sql:max(Table, Column, all),
   {data, Result} = model_exec:exec_n(L),
@@ -185,11 +178,6 @@ count(Cond, Table) ->
   {data, Result} = model_exec:exec_n(Sql),
   [[Count]] = mysql:get_result_rows(Result),
   Count.
-%% count_test() ->
-%%   Poll = start(#db_conf{username="root", password="", database="slg_model"}),
-%%   S = count(all, buildings),
-%%   true = is_integer(S),
-%%   S.
 
 pos_attr(Attrs, List) ->
 %%  io:format("~p ~p", [Attrs, List]),

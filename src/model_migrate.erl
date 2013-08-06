@@ -87,7 +87,7 @@ new(Path, Name) when is_atom(Name) ->
 
 %% 当前的migrate最大版本号.
 max_version() ->
-  B = case model:max(migrate, version, migrate) of
+  B = case model:max(version, migrate) of
         undefined -> <<"0">>;
         B1 -> B1
       end,
@@ -121,25 +121,29 @@ parse_module_file_name(FileName) ->
 
 %% 插入新版本记录
 insert(Version) ->
-  model:insert_n(migrate, [{version, Version}], migrate).
+  model:insert_n([{version, Version}], migrate).
 
 delete(Version) ->
-  model:delete_n(migrate, [{version, Version}], migrate).
+  model:delete_n([{version, Version}], migrate).
 
 %% 执行migrate操作
 do(Path, HostName, UsrName, Password, Database) ->
   create_db(HostName, Database, UsrName, Password),
   source(HostName, Database, UsrName, Password, Path ++ "/db.sql"),
   create_migrate_t(HostName,Database, UsrName, Password),
-  migrate = model:start(#db_conf{poll=migrate, username=UsrName, worker=1,
-                                 host=HostName,
-                                 password=Password, database=Database}),
+  Dbc = #db_conf{username=UsrName,
+                 password=Password,
+                 host=HostName,
+                 database=Database},
+  model:init_m(),
+  model:sid_s(Dbc, [{s_id, 1}, {worker, 1}]),
+  model:gen_m(),
   Max = max_version(),
   io:format("max ~p~n", [Max]),
   All = all_migrates(Path),
   Fun = fun(FileName) ->
             {Module, Time} = parse_module_file_name(FileName),
-            case model:count(migrate, [{version, Time}], migrate) of
+            case model:count([{version, Time}], migrate) of
               0 -> Atom = list_to_atom(Module),
                    Atom:up(),
                    insert(Time);
