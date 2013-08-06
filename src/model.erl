@@ -67,14 +67,14 @@ select_t(Record, Table, Column, Cond, Limit) ->
   SQL = model_sql:select(Table, Column, Cond, Limit),
   model_exec:select_t(Record, SQL).
 
-select_n(Poll, Record, Table, Column, Cond) ->
+select_n(Record, Table, Column, Cond) ->
   SQL = model_sql:select(Table, Column, Cond),
-  model_exec:select_n(Poll, Record, SQL).
+  model_exec:select_n(Record, SQL).
 
 %% with limit
-select_n(Poll, Record, Table, Column, Cond, Limit) ->
+select_n(Record, Table, Column, Cond, Limit) ->
   SQL = model_sql:select(Table, Column, Cond, Limit),
-  model_exec:select_n(Poll, Record, SQL).
+  model_exec:select_n(Record, SQL).
 
 
 kv_list([K], [V]) ->  [{K, V}];
@@ -95,31 +95,31 @@ update_t(Id, Table, List) ->
   ok.
 
 %% Data为Record的实例.
-update_n(Poll, [_Id|Keys], Table, Data) ->
+update_n([_Id|Keys], Table, Data) ->
   [_Name, Id | Values] = tuple_to_list(Data),
   true = (length(Keys) == length(Values)),
   Kv = kv_list(Keys, Values),
   SQL = model_sql:update(Table, Kv, [{id, Id}]),
-  model_exec:update_n(Poll, SQL),
+  model_exec:update_n(SQL),
   ok;
 %% 简单列表修改.
-update_n(Poll, Id, Table, List) ->
+update_n(Id, Table, List) ->
   SQL = model_sql:update(Table, List, [{id, Id}]),
-  model_exec:update_n(Poll, SQL),
+  model_exec:update_n(SQL),
   ok.
 
 %% 参数为普通kv
-insert_n(Poll, Kv, Table) ->
+insert_n(Kv, Table) ->
   SQL = model_sql:insert(Table, Kv),
-  model_exec:insert_n(Poll, SQL).
+  model_exec:insert_n(SQL).
 
 %% 参数为记录
-insert_n(Poll, Keys, Table, Data) when is_list(Keys) ->
+insert_n(Keys, Table, Data) when is_list(Keys) ->
   [_Name|Values] = tuple_to_list(Data),
   true = (length(Keys) == length(Values)),
   Kv = kv_list(Keys, Values),
   SQL = model_sql:insert(Table, Kv),
-  model_exec:insert_n(Poll, SQL).
+  model_exec:insert_n(SQL).
 
 
 %% 参数为普通kv
@@ -135,17 +135,17 @@ insert_t(Keys, Table, Data) when is_list(Keys) ->
   SQL = model_sql:insert(Table, Kv),
   model_exec:insert_t(SQL).
 
-delete_n(Poll, {in, IdList}, Table) ->
+delete_n({in, IdList}, Table) ->
   SQL = model_sql:delete(Table, {id, in, IdList}),
-  model_exec:delete_n(Poll, SQL),
+  model_exec:delete_n(SQL),
   ok;
-delete_n(Poll, KvList, Table) when is_list(KvList) ->
+delete_n(KvList, Table) when is_list(KvList) ->
   SQL = model_sql:delete(Table, KvList),
-  model_exec:delete_n(Poll, SQL),
+  model_exec:delete_n(SQL),
   ok;
-delete_n(Poll, Id, Table) ->
+delete_n(Id, Table) ->
   SQL = model_sql:delete(Table, [{id, Id}]),
-  model_exec:delete_n(Poll, SQL),
+  model_exec:delete_n(SQL),
   ok.
 
 delete_t({in, IdList}, Table) ->
@@ -161,35 +161,35 @@ delete_t(Id, Table) ->
   model_exec:delete_t(SQL),
   ok.
 
-insert_delete_test() ->
-  Poll = start(#db_conf{username="root", password="", database="slg_model"}),
-  delete_n(Poll, {in, [23]}, buildings),
-  delete_n(Poll, [{user_id, 2001}], buildings),
-  insert_n(Poll, [{id, 23}, {type, <<"gog">>}, {level, 23}], buildings),
-  ok.
+%% insert_delete_test() ->
+%%   Poll = start(#db_conf{username="root", password="", database="slg_model"}),
+%%   delete_n(Poll, {in, [23]}, buildings),
+%%   delete_n(Poll, [{user_id, 2001}], buildings),
+%%   insert_n(Poll, [{id, 23}, {type, <<"gog">>}, {level, 23}], buildings),
+%%   ok.
 
-max(Poll, Column, Table) ->
+max(Column, Table) ->
   L = model_sql:max(Table, Column, all),
-  {data, Result} = model_exec:exec(Poll, L),
+  {data, Result} = model_exec:exec_n(L),
   [[Id]] = mysql:get_result_rows(Result),
   Id.
 
-max_id(Poll, Table) ->
-  case ?MODULE:max(Poll, id, Table) of
+max_id(Table) ->
+  case ?MODULE:max(id, Table) of
     undefined -> 0;
     Id ->  Id
   end.
 
-count(Poll, Cond, Table) ->
+count(Cond, Table) ->
   Sql = model_sql:count(Table, Cond),
-  {data, Result} = model_exec:exec(Poll, Sql),
+  {data, Result} = model_exec:exec_n(Sql),
   [[Count]] = mysql:get_result_rows(Result),
   Count.
-count_test() ->
-  Poll = start(#db_conf{username="root", password="", database="slg_model"}),
-  S = count(Poll, all, buildings),
-  true = is_integer(S),
-  S.
+%% count_test() ->
+%%   Poll = start(#db_conf{username="root", password="", database="slg_model"}),
+%%   S = count(all, buildings),
+%%   true = is_integer(S),
+%%   S.
 
 pos_attr(Attrs, List) ->
 %%  io:format("~p ~p", [Attrs, List]),
@@ -211,28 +211,28 @@ module_new(Key) ->
 
   SelectFun01 = io_lib:format("
      select_n(Cond, Limit) ->
-     model:select_n(model_config:poll(), ~p, ~p, all, Cond, Limit).",
+     model:select_n(~p, ~p, all, Cond, Limit).",
                               [DbAtom, Table]),
   SelectFun0 = lists:flatten(SelectFun01),
   %% 普通查询函数.
   SelectFun1 = io_lib:format("
      select_n(Cond) when is_list(Cond) ->
-     model:select_n(model_config:poll(), ~p, ~p, all, Cond);
+     model:select_n(~p, ~p, all, Cond);
      select_n(UserId) when is_integer(UserId) ->
-     model:select_n(model_config:poll(), ~p, ~p, all, [{user_id, UserId}]).",
+     model:select_n(~p, ~p, all, [{user_id, UserId}]).",
                              [DbAtom, Table, DbAtom, Table]),
   SelectFun = lists:flatten(SelectFun1),
   UpdateFun1 = io_lib:format("update_n({Id, List}) ->
              List1 = model:pos_attr(model_record:m(~p), List),
-             model:update_n(model_config:poll(), Id, ~p, List1);
+             model:update_n(Id, ~p, List1);
             update_n(Db) ->
-     model:update_n(model_config:poll(), model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
+     model:update_n(model_record:m(~p), ~p, Db).", [Key, Table, Key, Table]),
   UpdateFun = lists:flatten(UpdateFun1),
   InsertFun1 = io_lib:format("insert_n(Db) ->
-     model:insert_n(model_config:poll(), model_record:m(~p), ~p, Db).", [Key, Table]),
+     model:insert_n(model_record:m(~p), ~p, Db).", [Key, Table]),
   InsertFun = lists:flatten(InsertFun1),
   DeleteFun1 = io_lib:format("delete_n(ID)  ->
-     model:delete_n(model_config:poll(), ID, ~p).
+     model:delete_n(ID, ~p).
    ", [Table]),
   DeleteFun = lists:flatten(DeleteFun1),
   {ok, M1} = spt_smerl:add_func(M0, SelectFun0),

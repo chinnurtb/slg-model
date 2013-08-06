@@ -21,15 +21,11 @@ stop(Key) ->
   Atom = model:atom(holder, Key),
   gen_server:cast(Atom, stop).
 
-%% 读取数据库，获得Table表的最大id.
-max_id(Poll, Table) ->
-  model:max_id(Poll, Table).
-
 init([Dbc, Key, _Opts]) ->
   data_ets:new(Key),
   %% model:start(Dbc#db_conf{poll=model:atom_poll(Key, read), worker=3}),
   %% model:start(Dbc#db_conf{poll=model:atom_poll(Key, write), worker=1}),
-  MaxId = max_id(model_config:poll(), Key),
+  MaxId = model:max_id(Key),
   data_guard_super:start_guard(Key),
   data_writer_super:start_writer(Key),
   data_clear_super:start_clear(Key),
